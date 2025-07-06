@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>访问计数器</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #f5f7fa, #c3cfe2);
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 80px auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            padding: 32px 24px 24px 24px;
+            text-align: center;
+        }
+        h2 {
+            color: #34495e;
+            letter-spacing: 2px;
+            margin-bottom: 24px;
+        }
+        .count {
+            font-size: 3rem;
+            color: #27ae60;
+            font-weight: bold;
+            margin-bottom: 24px;
+            display: inline-block;
+            background: #eafaf1;
+            padding: 16px 32px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #eafaf1;
+        }
+        .btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .action-btn {
+            display: inline-block;
+            padding: 12px 32px;
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .action-btn:hover {
+            background: #219150;
+        }
+        .footer {
+            margin-top: 32px;
+            color: #aaa;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>访问计数器</h2>
+    <div class="count" th:text="${count}">0</div>
+    <div class="btn-row">
+        <a href="/redis/counter" class="action-btn">刷新计数</a>
+        <a href="/" class="action-btn">返回首页</a>
+    </div>
+    <div class="footer">Powered by Miaoyongbin</div>
+</div>
+</body>
+</html>

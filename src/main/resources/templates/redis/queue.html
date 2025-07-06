@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>消息队列</title>
+  <style>
+    body { background: #f0f4f8; font-family: 'Segoe UI', Arial, sans-serif; }
+    .container { max-width: 400px; margin: 60px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 32px 24px; text-align: center; }
+    h2 { color: #34495e; margin-bottom: 24px; }
+    form { margin-bottom: 10px; }
+    input {
+      padding: 10px;
+      width: 70%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .action-btn {
+      padding: 10px 28px;
+      background: #16a085;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .action-btn:hover { background: #117864; }
+    .pop-btn {
+      background: #e67e22;
+    }
+    .footer {
+      margin-top: 32px;
+      color: #aaa;
+      font-size: 0.95rem;
+    }
+    .pop-btn:hover { background: #d35400; }
+    ul { list-style: none; padding: 0; margin-top: 20px; }
+    li { background: #e8f8f5; margin: 6px 0; padding: 8px; border-radius: 6px; color: #16a085; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>消息队列</h2>
+  <form action="/redis/queue/push" method="post">
+    <input name="msg" placeholder="消息内容" required/>
+    <div class="btn-row">
+      <button type="submit" class="action-btn">入队</button>
+      <a href="/" class="action-btn">返回首页</a>
+    </div>
+  </form>
+  <form action="/redis/queue/pop" method="post">
+    <button type="submit" class="action-btn pop-btn">出队</button>
+  </form>
+  <ul>
+    <li th:each="m : ${msgs}" th:text="${m}"></li>
+  </ul>
+  <div class="footer">Powered by Miaoyongbin</div>
+</div>
+</body>
+</html>

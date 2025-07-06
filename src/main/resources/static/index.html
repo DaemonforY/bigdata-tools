@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>大数据中间件学习导航</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f7f7f9;
+        }
+        header {
+            background: #4a90e2;
+            color: #fff;
+            padding: 30px 0 18px 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(74,144,226,0.08);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.2em;
+            letter-spacing: 2px;
+        }
+        .container {
+            max-width: 700px;
+            background: #fff;
+            margin: 40px auto 0 auto;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+            padding: 30px 40px;
+        }
+        h2 {
+            color: #4a90e2;
+            border-left: 4px solid #4a90e2;
+            padding-left: 12px;
+            margin-top: 36px;
+            margin-bottom: 16px;
+        }
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        li {
+            margin: 10px 0;
+        }
+        a {
+            text-decoration: none;
+            color: #222;
+            font-size: 1.08em;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+        }
+        a:hover {
+            background: #eaf3fc;
+            color: #2176c1;
+        }
+        .icon {
+            margin-right: 7px;
+            color: #4a90e2;
+        }
+        @media (max-width: 800px) {
+            .container { padding: 16px 8px; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>大数据中间件学习导航</h1>
+    <div style="font-size:1.1em;margin-top:8px;">快速访问所有模板页面</div>
+</header>
+<div class="container" id="nav-container">
+    <!-- 页面导航会自动生成 -->
+</div>
+<script>
+    // 定义页面结构（你只需维护这个结构）
+    const pages = [
+        {
+            category: "Redis 相关页面",
+            icon: "🧊",
+            items: [
+                { name: "计数器", path: "/redis/counter" },
+                { name: "抽奖", path: "/redis/lottery" },
+                { name: "个人资料", path: "/redis/profile" },
+                { name: "队列", path: "/redis/queue" },
+                { name: "排行榜", path: "/redis/rank" },
+                { name: "限流", path: "/redis/api/visitPage" }
+            ]
+        },
+        {
+            category: "HBase 相关页面",
+            icon: "🗄️",
+            items: [
+                { name: "添加学生", path: "/hbase/student/add" },
+                { name: "学生列表", path: "/hbase/student/list" },
+                { name: "学生详情", path: "JS_DETAIL" },
+                { name: "学生版本", path: "JS_VERSION" }
+            ]
+        },
+        {
+            category: "Kafka 相关页面",
+            icon: "📄",
+            items: [
+                { name: "基础Producer/Consumer演示", path: "/kafka/simple/demo" },
+                { name: "分区与Rebalance演示", path: "/kafka/partition/demo" },
+                { name: "延迟消息演示", path: "/kafka/delay/send" },
+                { name: "Kafka Streams单词计数", path: "/kafka/wordcount/demo" }
+            ]
+        },
+        {
+            category: "综合项目",
+            icon: "🚀",
+            items: [
+                { name: "订单异步处理与状态追踪", path: "/order_demo.html" },
+                { name: "风控黑名单拦截", path: "/risk_demo.html" },
+                { name: "实时排行榜与历史分析", path: "/score_demo.html" },
+                { name: "用户行为埋点演示", path: "/useraction_demo.html" }
+            ]
+        },
+        {
+            category: "弹幕墙/其它",
+            icon: "💬",
+            items: [
+                { name: "炫酷弹幕墙", path: "/danmu/index" }
+            ]
+        }
+    ];
+
+    function renderNavigation(pages) {
+        const container = document.getElementById('nav-container');
+        container.innerHTML = '';
+        pages.forEach(group => {
+            const h2 = document.createElement('h2');
+            h2.textContent = `${group.icon ? group.icon + ' ' : ''}${group.category}`;
+            container.appendChild(h2);
+
+            const ul = document.createElement('ul');
+            group.items.forEach(page => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                if (page.path === "JS_DETAIL") {
+                    a.href = "#";
+                    a.innerHTML = `<span class="icon">${group.icon ? group.icon : '🔗'}</span>学生详情`;
+                    a.onclick = function() {
+                        let id = prompt("请输入学生ID:");
+                        if (id) location.href = "/hbase/student/detail/" + encodeURIComponent(id);
+                    };
+                } else if (page.path === "JS_VERSION") {
+                    a.href = "#";
+                    a.innerHTML = `<span class="icon">${group.icon ? group.icon : '🔗'}</span>学生版本`;
+                    a.onclick = function() {
+                        let id = prompt("请输入学生ID:");
+                        if (id) location.href = "/hbase/student/version/" + encodeURIComponent(id);
+                    };
+                } else {
+                    a.href = page.path;
+                    a.innerHTML = `<span class="icon">${group.icon ? group.icon : '🔗'}</span>${page.name}`;
+                }
+                li.appendChild(a);
+                ul.appendChild(li);
+            });
+            container.appendChild(ul);
+        });
+    }
+    renderNavigation(pages);
+</script>
+</body>
+</html>

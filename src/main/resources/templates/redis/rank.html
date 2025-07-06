@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>排行榜</title>
+  <style>
+    body { background: #f0f4f8; font-family: 'Segoe UI', Arial, sans-serif; }
+    .container { max-width: 450px; margin: 60px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 32px 24px; text-align: center; }
+    h2 { color: #34495e; margin-bottom: 24px; }
+    form { margin-bottom: 10px; }
+    input {
+      padding: 10px;
+      width: 40%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    .action-btn {
+      padding: 10px 28px;
+      background: #8e44ad;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .footer {
+      margin-top: 32px;
+      color: #aaa;
+      font-size: 0.95rem;
+    }
+    .action-btn:hover { background: #5e3370; }
+    table { width: 100%; border-collapse: collapse; margin-top: 18px;}
+    th, td { border: 1px solid #e1e1e1; padding: 10px; border-radius: 5px;}
+    th { background: #f4ecf7; color: #8e44ad; }
+    td { background: #fdf6fd; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>排行榜</h2>
+  <form action="/redis/rank/add" method="post">
+    <input name="user" placeholder="用户名" required/>
+    <input name="score" placeholder="加分" required/>
+    <div class="btn-row">
+      <button type="submit" class="action-btn">加分</button>
+      <a href="/" class="action-btn">返回首页</a>
+    </div>
+  </form>
+  <table>
+    <tr><th>用户</th><th>分数</th></tr>
+    <tr th:each="entry : ${scores.entrySet()}">
+      <td th:text="${entry.key}"></td>
+      <td th:text="${entry.value}"></td>
+    </tr>
+  </table>
+  <div class="footer">Powered by Miaoyongbin</div>
+</div>
+</body>
+</html>
