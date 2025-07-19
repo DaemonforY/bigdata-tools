@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Kafka订单异步处理系统</title>
+    <style>
+        body { background: linear-gradient(120deg, #f5f7fa 60%, #c3cfe2 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 540px; margin: 60px auto; background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(44, 62, 80, 0.12); padding: 36px 30px 30px 30px;}
+        h2 { color: #2980b9; margin-bottom: 28px; text-align: center; letter-spacing: 2px; }
+        form { margin-bottom: 24px; }
+        label { color: #34495e; font-size: 1.05em; }
+        input { padding: 10px 12px; border: 1px solid #b2bec3; border-radius: 8px; font-size: 1.05em; background: #f7fbfd; margin-right: 8px;}
+        .btn-row { display: flex; justify-content: center; gap: 18px; margin-top: 10px; }
+        .action-btn { padding: 11px 30px; background: #2980b9; color: #fff; border: none; border-radius: 22px; font-size: 1.08rem; cursor: pointer; text-decoration: none; box-shadow: 0 2px 8px rgba(41,128,185,0.08); transition: background 0.2s, box-shadow 0.2s, transform 0.1s;}
+        .action-btn:hover { background: #2176c1; box-shadow: 0 4px 18px rgba(41,128,185,0.12); transform: translateY(-2px) scale(1.04);}
+        .msg-box { margin-top: 18px; padding: 12px; background: #eaf2fa; color: #2980b9; border-radius: 8px; text-align: center; font-size: 1.08em; box-shadow: 0 2px 8px rgba(41,128,185,0.04);}
+        .progress-bar-bg { background: #eaf2fa; border-radius: 10px; height: 24px; margin: 12px 0 20px 0; width: 100%; }
+        .progress-bar { background: #27ae60; height: 100%; border-radius: 10px; width: 0; color: #fff; font-weight: bold; text-align: center; transition: width 0.5s;}
+        .history-title { color: #2176c1; margin-top: 36px; margin-bottom: 10px; font-size: 1.08em; letter-spacing: 1px;}
+        ul.msg-list { list-style: none; padding: 0; margin: 0; }
+        ul.msg-list li { background: #f7fbfd; margin: 8px 0; padding: 10px 12px; border-radius: 8px; color: #34495e; font-size: 1.01em; box-shadow: 0 1px 4px rgba(41,128,185,0.03);}
+        .footer { margin-top: 36px; color: #aaa; font-size: 0.97rem; text-align: center; letter-spacing: 1px;}
+        @media (max-width: 600px) { .container { padding: 16px 2vw; } .btn-row { flex-direction: column; gap: 10px; } }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Kafka 订单消息异步处理系统</h2>
+    <form id="produceForm" autocomplete="off">
+        <label>订单数：</label>
+        <input name="count" type="number" min="1" max="50" value="10" required/>
+        <label>订单号前缀：</label>
+        <input name="orderPrefix" type="text" value="O" required style="width:60px;"/>
+        <label>金额范围：</label>
+        <input name="minAmount" type="number" step="0.01" value="10.00" style="width:80px;" required/> -
+        <input name="maxAmount" type="number" step="0.01" value="100.00" style="width:80px;" required/>
+        <div class="btn-row">
+            <button type="submit" class="action-btn">批量下单</button>
+            <a href="/" class="action-btn">返回首页</a>
+        </div>
+    </form>
+    <div class="msg-box" id="msgBox"></div>
+    <div class="progress-bar-bg">
+        <div id="progressBar" class="progress-bar"></div>
+    </div>
+
+    <div>
+        <div class="history-title">已消费订单（最新50条，实时推送）</div>
+        <ul class="msg-list" id="msgList"></ul>
+    </div>
+    <div class="footer">Powered by Miaoyongbin</div>
+</div>
+
+<script>
+    function uuidv4() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+    let wsSessionId = uuidv4();
+
+    // WebSocket
+    let stompClient = null;
+    let progress = {sent:0, total:0};
+    let msgList = [];
+    function connectWS() {
+        let socket = new SockJS('/ws/order');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            stompClient.subscribe('/topic/order-progress/' + wsSessionId, function(msg) {
+                let data = JSON.parse(msg.body);
+                progress.sent = data.sent;
+                progress.total = data.total;
+                updateProgress();
+            });
+            stompClient.subscribe('/topic/order-consume', function(msg) {
+                let val = msg.body;
+                msgList.unshift(val);
+                if (msgList.length > 50) msgList.pop();
+                renderMsgList();
+            });
+        });
+    }
+    connectWS();
+
+    function updateProgress() {
+        let bar = document.getElementById('progressBar');
+        if (progress.total === 0) {
+            bar.style.width = '0';
+            bar.innerText = '';
+        } else {
+            let percent = Math.round(progress.sent / progress.total * 100);
+            bar.style.width = percent + '%';
+            bar.innerText = `${progress.sent}/${progress.total} (${percent}%)`;
+            if (progress.sent === progress.total) {
+                setTimeout(() => {
+                    bar.style.width = '0';
+                    bar.innerText = '';
+                    progress.sent = 0; progress.total = 0;
+                }, 1500);
+            }
+        }
+    }
+
+    document.getElementById('produceForm').onsubmit = function(e) {
+        e.preventDefault();
+        let count = this.count.value.trim();
+        let orderPrefix = this.orderPrefix.value.trim();
+        let minAmount = this.minAmount.value.trim();
+        let maxAmount = this.maxAmount.value.trim();
+        if (!count || !orderPrefix || !minAmount || !maxAmount) return;
+        let msgBox = document.getElementById('msgBox');
+        msgBox.innerText = '正在批量下单...';
+        fetch('/kafka/order/produce', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'count=' + encodeURIComponent(count) + '&orderPrefix=' + encodeURIComponent(orderPrefix) + '&minAmount=' + encodeURIComponent(minAmount) + '&maxAmount=' + encodeURIComponent(maxAmount) + '&wsSessionId=' + encodeURIComponent(wsSessionId)
+        }).then(resp => resp.text()).then(txt => {
+            msgBox.innerText = '下单已启动，订单将在后台批量发送。';
+            setTimeout(() => { msgBox.innerText = ''; }, 3000);
+        });
+        progress.sent = 0; progress.total = count;
+        updateProgress();
+    };
+
+    function renderMsgList() {
+        let ul = document.getElementById('msgList');
+        ul.innerHTML = '';
+        msgList.forEach(msg => {
+            let li = document.createElement('li');
+            li.innerText = msg;
+            ul.appendChild(li);
+        });
+    }
+
+    fetch('/kafka/order/history').then(resp => resp.json()).then(list => {
+        msgList = list || [];
+        renderMsgList();
+    });
+</script>
+</body>
+</html>

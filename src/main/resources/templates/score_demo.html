@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>实时排行榜与用户画像</title>
+    <style>
+        body { background: #f5f7fa; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; }
+        .container { max-width: 700px; margin: 60px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 36px 30px 30px 30px;}
+        h2 { color: #27ae60; margin-bottom: 28px; text-align: center; }
+        label { color: #34495e; font-size: 1.05em; }
+        input, select { padding: 10px 12px; border: 1px solid #b2bec3; border-radius: 8px; font-size: 1.05em; background: #f7fbfd;}
+        .action-btn { padding: 8px 22px; background: #27ae60; color: #fff; border: none; border-radius: 22px; font-size: 1.02rem; cursor: pointer; text-decoration: none; box-shadow: 0 2px 8px rgba(39,174,96,0.08); transition: background 0.2s, box-shadow 0.2s;}
+        .action-btn:hover { background: #219150; box-shadow: 0 4px 18px rgba(39,174,96,0.13);}
+        .msg-box { margin-top: 18px; padding: 12px; background: #eafaf1; color: #27ae60; border-radius: 8px; text-align: center; font-size: 1.08em; box-shadow: 0 2px 8px rgba(39,174,96,0.04);}
+        .section-title { color: #27ae60; margin-top: 36px; margin-bottom: 10px; font-size: 1.08em; letter-spacing: 1px;}
+        .footer { margin-top: 36px; color: #aaa; font-size: 0.97rem; text-align: center; letter-spacing: 1px;}
+        table { border-collapse: collapse; width: 100%; margin-top: 12px;}
+        th, td { border: 1px solid #e1e1e1; padding: 8px 6px; text-align: center;}
+        th { background: #eafaf1; color: #27ae60; }
+        td { background: #f7fbfd; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>实时排行榜与用户画像演示</h2>
+    <form id="produceForm" style="margin-bottom:8px;">
+        <label>用户ID：</label>
+        <input name="userId" value="alice" required style="width:100px;"/>
+        <label>得分：</label>
+        <input name="score" value="5" required style="width:60px;"/>
+        <button type="submit" class="action-btn">得分</button>
+        <button type="button" class="action-btn" id="batchBtn">批量模拟</button>
+    </form>
+    <div class="msg-box" id="msgBox"></div>
+
+    <div class="section-title">实时排行榜（Top10）</div>
+    <table>
+        <thead>
+        <tr><th>排名</th><th>用户</th><th>总分</th></tr>
+        </thead>
+        <tbody id="rankTable"></tbody>
+    </table>
+
+    <div class="section-title">用户画像</div>
+    <form id="profileForm" style="margin-bottom:8px;">
+        <label>用户ID：</label>
+        <input name="userId" value="alice" required style="width:100px;"/>
+        <button type="submit" class="action-btn">查询</button>
+    </form>
+    <div id="profileBox"></div>
+
+    <div class="section-title">分时段得分</div>
+    <table>
+        <thead>
+        <tr><th>小时</th><th>得分</th></tr>
+        </thead>
+        <tbody id="timeSeriesTable"></tbody>
+    </table>
+    <div class="footer">Powered by Miaoyongbin</div>
+</div>
+<script>
+    let stompClient = null;
+    let currentUserId = document.querySelector('#profileForm input[name="userId"]').value;
+
+    function connectWS() {
+        let socket = new SockJS('/ws/score');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function () {
+            stompClient.subscribe('/topic/score/rank', function (msg) {
+                const data = JSON.parse(msg.body);
+                const tbody = document.getElementById('rankTable');
+                tbody.innerHTML = '';
+                data.forEach((item, idx) => {
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${idx + 1}</td><td>${item.userId}</td><td>${item.score}</td>`;
+                    tbody.appendChild(tr);
+                });
+            });
+            subscribeUser(currentUserId);
+        });
+    }
+
+    function subscribeUser(userId) {
+        stompClient.subscribe('/topic/score/profile/' + userId, function (msg) {
+            const data = JSON.parse(msg.body);
+            document.getElementById('profileBox').innerHTML = `总分: <b>${data.total}</b>，最高分: <b>${data.max}</b>，平均分: <b>${data.avg.toFixed(2)}</b>`;
+        });
+        stompClient.subscribe('/topic/score/timeseries/' + userId, function (msg) {
+            const data = JSON.parse(msg.body);
+            let tbody = document.getElementById('timeSeriesTable');
+            tbody.innerHTML = '';
+            Object.keys(data).forEach(hour => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `<td>${hour}</td><td>${data[hour]}</td>`;
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    document.getElementById('produceForm').onsubmit = function(e) {
+        e.preventDefault();
+        let userId = this.userId.value.trim();
+        let score = this.score.value.trim();
+        fetch('/score/produce', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'userId=' + encodeURIComponent(userId) + '&score=' + encodeURIComponent(score)
+        }).then(() => {
+            document.getElementById('msgBox').innerText = `已得分: ${userId} +${score}`;
+            setTimeout(() => { document.getElementById('msgBox').innerText = ''; }, 1500);
+        });
+    };
+    document.getElementById('batchBtn').onclick = function() {
+        fetch('/score/batch', {method: 'POST'}).then(() => {
+            document.getElementById('msgBox').innerText = '已批量模拟';
+            setTimeout(() => { document.getElementById('msgBox').innerText = ''; }, 1500);
+        });
+    };
+    document.getElementById('profileForm').onsubmit = function(e) {
+        e.preventDefault();
+        let userId = this.userId.value.trim();
+        currentUserId = userId;
+        subscribeUser(userId);
+    };
+
+    connectWS();
+</script>
+</body>
+</html>

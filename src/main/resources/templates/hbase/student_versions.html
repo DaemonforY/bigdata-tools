@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>姓名多版本</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7f7f9; margin: 0;}
+        .container { max-width: 500px; margin: 60px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 32px 36px 30px 36px; }
+        h2 { color: #4a90e2; margin-bottom: 24px; text-align: center;}
+        ul { padding-left: 24px; }
+        li { margin: 10px 0; font-size: 1.08em; color: #333;}
+        .nav-links { display: flex; justify-content: space-between; margin-top: 18px; }
+        .nav-links a { color: #4a90e2; text-decoration: none; font-size: 1em;}
+        .nav-links a:hover { text-decoration: underline;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>学号 <span th:text="${id}"></span> 的姓名多版本</h2>
+    <ul>
+        <li th:each="name : ${names}" th:text="${name}"></li>
+    </ul>
+    <div class="nav-links">
+        <a href="/">返回首页</a>
+        <a href="/hbase/student/list">返回学生列表</a>
+    </div>
+</div>
+</body>
+</html>

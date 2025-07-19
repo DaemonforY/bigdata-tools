@@ -35,7 +35,7 @@ public class KafkaConsumerDemo {
 
     private static KafkaConsumer<String, String> getStringStringKafkaConsumer() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "39.98.123.172:9092");
+        props.put("bootstrap.servers", "39.99.241.140:9092");
         props.put("group.id", "demo-group");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");

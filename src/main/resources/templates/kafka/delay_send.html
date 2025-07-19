@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Kafka延迟消息发送</title>
+    <style>
+        body { background: linear-gradient(120deg, #f0f4f8 60%, #d6eaff 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 480px; margin: 60px auto; background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(44, 62, 80, 0.12); padding: 36px 30px 30px 30px; }
+        h2 { color: #2980b9; margin-bottom: 28px; text-align: center; letter-spacing: 2px; }
+        form { margin-bottom: 28px; }
+        .input-row { display: flex; flex-direction: column; gap: 18px; margin-bottom: 16px; }
+        label { color: #34495e; margin-bottom: 7px; font-size: 1.05em; }
+        input { padding: 12px 12px; border: 1px solid #b2bec3; border-radius: 8px; font-size: 1.05em; background: #f7fbfd; transition: border 0.2s; }
+        input:focus { border: 1.5px solid #2980b9; outline: none; background: #f0f8ff; }
+        .btn-row { display: flex; justify-content: center; gap: 18px; margin-top: 10px; }
+        .action-btn { padding: 11px 30px; background: #2980b9; color: #fff; border: none; border-radius: 22px; font-size: 1.08rem; cursor: pointer; text-decoration: none; box-shadow: 0 2px 8px rgba(41,128,185,0.08); transition: background 0.2s, box-shadow 0.2s, transform 0.1s; }
+        .action-btn:hover { background: #2176c1; box-shadow: 0 4px 18px rgba(41,128,185,0.12); transform: translateY(-2px) scale(1.04); }
+        .msg-box { margin-top: 18px; padding: 12px; background: #eaf2fa; color: #2980b9; border-radius: 8px; text-align: center; font-size: 1.08em; box-shadow: 0 2px 8px rgba(41,128,185,0.04); min-height: 28px;}
+        .history-title { color: #2176c1; margin-top: 36px; margin-bottom: 10px; font-size: 1.08em; letter-spacing: 1px; }
+        .history-table { width: 100%; border-collapse: collapse; margin-bottom: 0; background: #f8fbfd; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(41,128,185,0.03);}
+        .history-table th, .history-table td { padding: 9px 7px; border-bottom: 1px solid #e3e8ee; text-align: center; font-size: 0.98em;}
+        .history-table th { background: #eaf2fa; color: #2980b9; }
+        .history-table tr:last-child td { border-bottom: none; }
+        .footer { margin-top: 36px; color: #aaa; font-size: 0.97rem; text-align: center; letter-spacing: 1px;}
+        .countdown { color: #e67e22; font-weight: bold; }
+        @media (max-width: 600px) { .container { padding: 16px 2vw; } .btn-row { flex-direction: column; gap: 10px; } .input-row { gap: 10px; } .history-table th, .history-table td { font-size: 0.9em; }}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Kafka 延迟消息发送</h2>
+    <form id="delayForm" method="post" autocomplete="off">
+        <div class="input-row">
+            <div>
+                <label>订单号</label>
+                <input name="orderId" placeholder="如 O1234" required/>
+            </div>
+            <div>
+                <label>延迟秒数</label>
+                <input name="delaySeconds" type="number" min="1" max="600" placeholder="如 5" required/>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button type="submit" class="action-btn">发送延迟消息</button>
+            <a href="/" class="action-btn">返回首页</a>
+        </div>
+    </form>
+    <div class="msg-box" id="msgBox"></div>
+
+    <div>
+        <div class="history-title">已消费消息（最近20条）</div>
+        <table class="history-table" id="history-table">
+            <thead>
+            <tr>
+                <th>订单号</th>
+                <th>计划触达时间</th>
+                <th>状态/消费时间</th>
+            </tr>
+            </thead>
+            <tbody id="history-tbody">
+            <!-- JS渲染 -->
+            </tbody>
+        </table>
+    </div>
+    <div class="footer">Powered by Miaoyongbin</div>
+</div>
+
+<script>
+    function pad2(n) {return n<10?'0'+n:n;}
+    function formatDate(ts) {
+        if (!ts) return '';
+        var d = new Date(ts);
+        return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + ' ' +
+            pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    }
+
+    let historyCache = [];
+
+    function renderHistory(list) {
+        let tbody = document.getElementById('history-tbody');
+        tbody.innerHTML = '';
+        historyCache = [];
+        let now = Date.now();
+        list.forEach((h, idx) => {
+            let deliverTs = h.deliverTime !== undefined ? h.deliverTime : h.deliverTs;
+            let actualTs = h.actualConsumeTime !== undefined ? h.actualConsumeTime : h.consumeTs || 0;
+            let tr = document.createElement('tr');
+            let statusTd = document.createElement('td');
+            if (!actualTs || actualTs < deliverTs) {
+                let remain = Math.max(0, Math.floor((deliverTs - now) / 1000));
+                statusTd.innerHTML = `<span class="countdown" data-idx="${idx}">${remain}</span> 秒后消费`;
+                historyCache.push({idx, deliverTs, tr, statusTd});
+            } else {
+                statusTd.innerText = formatDate(actualTs);
+            }
+            tr.innerHTML = `<td>${h.orderId}</td>
+            <td>${formatDate(deliverTs)}</td>`;
+            tr.appendChild(statusTd);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function refreshCountdown() {
+        let now = Date.now();
+        let needRefresh = false;
+        historyCache.forEach(item => {
+            let remain = Math.max(0, Math.floor((item.deliverTs - now) / 1000));
+            let span = item.statusTd.querySelector('.countdown');
+            if (span) {
+                span.innerText = remain;
+                if (remain === 0) needRefresh = true;
+            }
+        });
+        if (needRefresh) setTimeout(refreshHistory, 3000);
+    }
+
+    function refreshHistory() {
+        fetch('/kafka/delay/history')
+            .then(resp => resp.json())
+            .then(list => {
+                renderHistory(list);
+            });
+    }
+
+    // 发送消息后顶部倒计时提示
+    let tipInterval = null;
+    function showSendMsg(orderId, delaySeconds) {
+        let remain = delaySeconds;
+        let msgBox = document.getElementById('msgBox');
+        msgBox.innerHTML = `消息已发送: 订单号 <b>${orderId}</b>, 延迟 <b>${delaySeconds}</b> 秒，剩余 <span id="tipCountdown">${remain}</span> 秒`;
+        if (tipInterval) clearInterval(tipInterval);
+        tipInterval = setInterval(() => {
+            remain--;
+            if (remain > 0) {
+                document.getElementById('tipCountdown').innerText = remain;
+            } else {
+                clearInterval(tipInterval);
+                msgBox.innerHTML = `订单号 <b>${orderId}</b> 已到达！`;
+                setTimeout(() => { msgBox.innerHTML = ''; }, 3000);
+            }
+        }, 1000);
+    }
+
+    // 拦截表单提交，AJAX发送
+    document.getElementById('delayForm').onsubmit = function(e) {
+        e.preventDefault();
+        let orderId = this.orderId.value.trim();
+        let delaySeconds = parseInt(this.delaySeconds.value.trim());
+        if (!orderId || !delaySeconds) return;
+        let formData = new URLSearchParams();
+        formData.append("orderId", orderId);
+        formData.append("delaySeconds", delaySeconds);
+        fetch('/kafka/delay/send', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: formData
+        }).then(resp => {
+            if (resp.ok) {
+                showSendMsg(orderId, delaySeconds);
+                this.reset();
+            }
+        });
+        return false;
+    };
+
+    // 首次渲染
+    refreshHistory();
+    // 每3秒刷新历史
+    setInterval(refreshHistory, 3000);
+    // 每秒刷新倒计时
+    setInterval(refreshCountdown, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>学生详情</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7f7f9; margin: 0;}
+        .container { max-width: 400px; margin: 60px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 32px 36px 30px 36px; }
+        h2 { color: #4a90e2; margin-bottom: 28px; text-align: center;}
+        .info { font-size: 1.08em; margin-bottom: 22px;}
+        .info p { margin: 15px 0; }
+        .label { color: #888; width: 90px; display: inline-block; }
+        .nav-links { display: flex; justify-content: space-between; margin-top: 18px; }
+        .nav-links a { color: #4a90e2; text-decoration: none; font-size: 1em;}
+        .nav-links a:hover { text-decoration: underline;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>学生详情</h2>
+    <div class="info">
+        <p><span class="label">学号：</span><span th:text="${stu.id}"></span></p>
+        <p><span class="label">姓名：</span><span th:text="${stu.name}"></span></p>
+        <p><span class="label">年龄：</span><span th:text="${stu.age}"></span></p>
+        <p><span class="label">数学分数：</span><span th:text="${stu.score}"></span></p>
+    </div>
+    <div class="nav-links">
+        <a href="/">返回首页</a>
+        <a href="/hbase/student/list">返回学生列表</a>
+    </div>
+</div>
+</body>
+</html>

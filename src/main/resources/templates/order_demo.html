@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>订单异步处理与状态流转演示</title>
+    <style>
+        body { background: #f5f7fa; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; }
+        .container { max-width: 650px; margin: 60px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 36px 30px 30px 30px;}
+        h2 { color: #2980b9; margin-bottom: 28px; text-align: center; }
+        label { color: #34495e; font-size: 1.05em; }
+        input, select { padding: 10px 12px; border: 1px solid #b2bec3; border-radius: 8px; font-size: 1.05em; background: #f7fbfd;}
+        .action-btn { padding: 10px 28px; background: #2980b9; color: #fff; border: none; border-radius: 22px; font-size: 1.08rem; cursor: pointer; text-decoration: none; box-shadow: 0 2px 8px rgba(41,128,185,0.08); transition: background 0.2s, box-shadow 0.2s, transform 0.1s;}
+        .action-btn:hover { background: #2176c1; box-shadow: 0 4px 18px rgba(41,128,185,0.12); transform: translateY(-2px) scale(1.04);}
+        .msg-box { margin-top: 18px; padding: 12px; background: #eaf2fa; color: #2980b9; border-radius: 8px; text-align: center; font-size: 1.08em; box-shadow: 0 2px 8px rgba(41,128,185,0.04);}
+        .section-title { color: #2176c1; margin-top: 36px; margin-bottom: 10px; font-size: 1.08em; letter-spacing: 1px;}
+        .footer { margin-top: 36px; color: #aaa; font-size: 0.97rem; text-align: center; letter-spacing: 1px;}
+        table { border-collapse: collapse; width: 100%; margin-top: 12px;}
+        th, td { border: 1px solid #e1e1e1; padding: 8px 6px; text-align: center;}
+        th { background: #eaf2fa; color: #2980b9; }
+        td { background: #f7fbfd; }
+        .status-btns { margin-top: 10px; text-align: center;}
+        .status-btns button { margin: 0 6px; }
+        .status-indicator { font-size: 1.12em; font-weight: bold; letter-spacing: 2px; color: #e67e22; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>订单异步处理与状态流转演示</h2>
+    <form id="produceForm" autocomplete="off">
+        <label>订单ID：</label>
+        <input name="orderId" value="O1001" required style="width:100px;"/>
+        <label>用户ID：</label>
+        <input name="userId" value="user1" required style="width:100px;"/>
+        <label>金额：</label>
+        <input name="amount" value="99.99" required style="width:100px;"/>
+        <button type="submit" class="action-btn">下单</button>
+    </form>
+    <div class="msg-box" id="msgBox"></div>
+
+    <div class="section-title">订单状态流转</div>
+    <div id="statusBox" class="status-indicator"></div>
+    <div class="status-btns">
+        <button class="action-btn" onclick="changeStatus('PAID')">PAID</button>
+        <button class="action-btn" onclick="changeStatus('SHIPPED')">SHIPPED</button>
+        <button class="action-btn" onclick="changeStatus('DONE')">DONE</button>
+    </div>
+
+    <div class="section-title">HBase订单历史状态</div>
+    <table>
+        <thead>
+        <tr>
+            <th>状态</th>
+            <th>变更时间</th>
+        </tr>
+        </thead>
+        <tbody id="hbaseHistory"></tbody>
+    </table>
+    <div class="footer">Powered by Miaoyongbin</div>
+</div>
+<script>
+    function formatTimestamp(ts) {
+        if (!ts) return '';
+        let d = new Date(Number(ts));
+        let Y = d.getFullYear();
+        let M = ('0' + (d.getMonth() + 1)).slice(-2);
+        let D = ('0' + d.getDate()).slice(-2);
+        let h = ('0' + d.getHours()).slice(-2);
+        let m = ('0' + d.getMinutes()).slice(-2);
+        let s = ('0' + d.getSeconds()).slice(-2);
+        return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+    }
+
+    let currentOrderId = document.querySelector('input[name="orderId"]').value;
+
+    function refresh(orderId) {
+        fetch('/order/redis?orderId=' + encodeURIComponent(orderId))
+            .then(resp => resp.text())
+            .then(status => {
+                document.getElementById('statusBox').innerText = status || '无';
+            });
+        fetch('/order/hbase?orderId=' + encodeURIComponent(orderId))
+            .then(resp => resp.json())
+            .then(data => {
+                let tbody = document.getElementById('hbaseHistory');
+                tbody.innerHTML = '';
+                if (data.history) {
+                    data.history.forEach(item => {
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${item.status}</td><td>${formatTimestamp(item.ts)}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                }
+            });
+    }
+
+    document.getElementById('produceForm').onsubmit = function(e) {
+        e.preventDefault();
+        let orderId = this.orderId.value.trim();
+        let userId = this.userId.value.trim();
+        let amount = this.amount.value.trim();
+        currentOrderId = orderId;
+        fetch('/order/produce', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'orderId=' + encodeURIComponent(orderId) + '&userId=' + encodeURIComponent(userId) + '&amount=' + encodeURIComponent(amount)
+        }).then(resp => resp.text()).then(() => {
+            document.getElementById('msgBox').innerText = `已下单: ${orderId} ${userId} ${amount}`;
+            setTimeout(() => { document.getElementById('msgBox').innerText = ''; }, 1500);
+            refresh(orderId);
+            subscribeWS(orderId);
+        });
+    };
+
+    function changeStatus(status) {
+        if (!currentOrderId) return;
+        fetch('/order/changestatus', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'orderId=' + encodeURIComponent(currentOrderId) + '&status=' + encodeURIComponent(status)
+        }).then(resp => resp.text()).then(() => {
+            document.getElementById('msgBox').innerText = `订单状态变更为: ${status}`;
+            setTimeout(() => { document.getElementById('msgBox').innerText = ''; }, 1500);
+            refresh(currentOrderId);
+        });
+    }
+
+    // WebSocket实时推送
+    let stompClient = null;
+    function subscribeWS(orderId) {
+        if (stompClient) stompClient.disconnect();
+        let socket = new SockJS('/ws/order');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            stompClient.subscribe('/topic/order-status/' + orderId, function(msg) {
+                document.getElementById('statusBox').innerText = msg.body || '无';
+                // 可自动刷新历史
+                refresh(orderId);
+            });
+        });
+    }
+
+    // 页面加载时
+    refresh(currentOrderId);
+    subscribeWS(currentOrderId);
+</script>
+</body>
+</html>

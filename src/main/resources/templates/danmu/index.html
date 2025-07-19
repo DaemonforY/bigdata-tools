@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>炫酷弹幕墙</title>
+    <style>
+        body { background: #232526; color: #fff; margin: 0; overflow: hidden; }
+        #danmuWall { position: fixed; top: 0; left: 0; width: 100vw; height: 80vh; pointer-events: none; }
+        .danmu {
+            position: absolute;
+            white-space: nowrap;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px #000, 0 0 20px #fff;
+        }
+        .input-area { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); }
+        input, button {
+            font-size: 1.2em;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            margin-right: 10px;
+        }
+        button { background: #ff4e50; color: #fff; cursor: pointer; }
+        button:hover { background: #f9d423; color: #232526; }
+    </style>
+</head>
+<body>
+<div id="danmuWall"></div>
+<div class="input-area">
+    <input id="danmuInput" type="text" placeholder="输入你的弹幕..." maxlength="30"/>
+    <button onclick="sendDanmu()">发送</button>
+</div>
+<script>
+    // 只改动这里的接口路径
+    const apiBase = "/api/danmus";
+    const apiList = "/api/danmus/list";
+    const danmuWall = document.getElementById('danmuWall');
+    const colors = ["#ff4e50","#f9d423","#6a82fb","#fc5c7d","#20e3b2","#fcb045","#f7971e","#fdc830"];
+
+    function randomColor() {
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    const TRACK_COUNT = 12;
+    const trackOccupied = new Array(TRACK_COUNT).fill(false);
+
+    let lastTrack = 0;
+    function getNextTrack() {
+        for (let i = 0; i < TRACK_COUNT; i++) {
+            let track = (lastTrack + i) % TRACK_COUNT;
+            if (!trackOccupied[track]) {
+                lastTrack = (track + 1) % TRACK_COUNT;
+                trackOccupied[track] = true;
+                return track;
+            }
+        }
+        return Math.floor(Math.random() * TRACK_COUNT);
+    }
+
+    function showDanmu(content) {
+        const danmu = document.createElement("div");
+        danmu.className = "danmu";
+        danmu.textContent = content;
+
+        // 轨道分配
+        const trackHeight = danmuWall.offsetHeight / TRACK_COUNT;
+        const track = getNextTrack();
+        danmu.style.top = (track * trackHeight + 5) + "px";
+        danmu.style.color = randomColor();
+
+        // 先放到屏幕外右侧，获取宽度
+        danmu.style.left = window.innerWidth + 100 + "px";
+        danmuWall.appendChild(danmu);
+
+        // 动画时长
+        const duration = 8 + Math.random() * 2;
+        const danmuWidth = danmu.offsetWidth;
+        const startX = window.innerWidth + Math.random() * 200;
+        const endX = -danmuWidth - 4000;
+
+        danmu.animate([
+            { left: startX + "px" },
+            { left: endX + "px" }
+        ], {
+            duration: duration * 1000,
+            easing: "linear"
+        });
+
+        danmu.style.left = startX + "px";
+        setTimeout(() => {
+            danmu.remove();
+            trackOccupied[track] = false;
+        }, duration * 1000);
+    }
+
+    function sendDanmu() {
+        const input = document.getElementById('danmuInput');
+        const content = input.value.trim();
+        if (!content) return;
+        fetch(apiBase, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content })
+        }).then(res => res.json())
+            .then(data => {
+                showDanmu(data.content);
+                input.value = "";
+            });
+    }
+
+    setInterval(() => {
+        fetch(apiList)
+            .then(res => res.json())
+            .then(list => {
+                danmuWall.innerHTML = "";
+                list.slice(-12).forEach(d => showDanmu(d.content));
+            });
+    }, 3000);
+
+    window.onload = () => {
+        fetch(apiList)
+            .then(res => res.json())
+            .then(list => {
+                list.slice(-12).forEach(d => showDanmu(d.content));
+            });
+    };
+</script>
+</body>
+</html>

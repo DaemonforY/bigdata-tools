@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>用户行为埋点演示</title>
+    <style>
+        body { background: #f5f7fa; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; }
+        .container { max-width: 520px; margin: 60px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 36px 30px 30px 30px;}
+        h2 { color: #2980b9; margin-bottom: 28px; text-align: center; }
+        label { color: #34495e; font-size: 1.05em; }
+        input, select { padding: 10px 12px; border: 1px solid #b2bec3; border-radius: 8px; font-size: 1.05em; background: #f7fbfd;}
+        .btn-row { display: flex; justify-content: center; gap: 18px; margin-top: 10px; }
+        .action-btn { padding: 10px 28px; background: #2980b9; color: #fff; border: none; border-radius: 22px; font-size: 1.08rem; cursor: pointer; text-decoration: none; box-shadow: 0 2px 8px rgba(41,128,185,0.08); transition: background 0.2s, box-shadow 0.2s, transform 0.1s;}
+        .action-btn:hover { background: #2176c1; box-shadow: 0 4px 18px rgba(41,128,185,0.12); transform: translateY(-2px) scale(1.04);}
+        .msg-box { margin-top: 18px; padding: 12px; background: #eaf2fa; color: #2980b9; border-radius: 8px; text-align: center; font-size: 1.08em; box-shadow: 0 2px 8px rgba(41,128,185,0.04);}
+        .section-title { color: #2176c1; margin-top: 36px; margin-bottom: 10px; font-size: 1.08em; letter-spacing: 1px;}
+        .footer { margin-top: 36px; color: #aaa; font-size: 0.97rem; text-align: center; letter-spacing: 1px;}
+        table { border-collapse: collapse; width: 100%; margin-top: 12px;}
+        th, td { border: 1px solid #e1e1e1; padding: 8px 6px; text-align: center;}
+        th { background: #eaf2fa; color: #2980b9; }
+        td { background: #f7fbfd; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 12px;
+        }
+        th, td {
+            border: 1px solid #e1e1e1;
+            padding: 8px 6px;
+            text-align: center;
+        }
+        th {
+            background: #eaf2fa;
+            color: #2980b9;
+        }
+        td {
+            background: #f7fbfd;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>用户行为埋点演示</h2>
+    <form id="produceForm">
+        <label>用户ID：</label>
+        <input name="userId" value="user1" required style="width:100px"/>
+        <label>页面：</label>
+        <select name="url">
+            <option value="/home">/home</option>
+            <option value="/search">/search</option>
+            <option value="/cart">/cart</option>
+            <option value="/order">/order</option>
+            <option value="/profile">/profile</option>
+        </select>
+        <button class="action-btn" type="submit">模拟埋点</button>
+    </form>
+    <div class="msg-box" id="msgBox"></div>
+
+    <div class="section-title">Redis访问计数</div>
+    <div id="redisCount"></div>
+
+    <div class="section-title">HBase访问历史</div>
+    <table>
+        <thead>
+        <tr>
+            <th>页面</th>
+            <th>时间戳</th>
+            <th>访问时间</th> <!-- 新增列 -->
+        </tr>
+        </thead>
+        <tbody id="hbaseHistory"></tbody>
+    </table>
+    <div class="footer">Powered by Miaotbin</div>
+</div>
+
+<script>
+    // 时间戳转格式化时间函数
+    function formatTimestamp(ts) {
+        if (!ts) return '';
+        let d = new Date(Number(ts));
+        let Y = d.getFullYear();
+        let M = ('0' + (d.getMonth() + 1)).slice(-2);
+        let D = ('0' + d.getDate()).slice(-2);
+        let h = ('0' + d.getHours()).slice(-2);
+        let m = ('0' + d.getMinutes()).slice(-2);
+        let s = ('0' + d.getSeconds()).slice(-2);
+        return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+    }
+
+    function refresh(userId) {
+        fetch('/useraction/redis?userId=' + encodeURIComponent(userId))
+            .then(resp => resp.text())
+            .then(cnt => {
+                document.getElementById('redisCount').innerText = cnt;
+            });
+        fetch('/useraction/hbase?userId=' + encodeURIComponent(userId))
+            .then(resp => resp.json())
+            .then(list => {
+                let tbody = document.getElementById('hbaseHistory');
+                tbody.innerHTML = '';
+                list.sort((a, b) => Number(b.ts) - Number(a.ts));
+                list.forEach(item => {
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.url}</td>
+                        <td>${item.ts}</td>
+                        <td>${formatTimestamp(item.ts)}</td> <!-- 新增显示格式化时间 -->
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    document.getElementById('produceForm').onsubmit = function(e) {
+        e.preventDefault();
+        let userId = this.userId.value.trim();
+        let url = this.url.value;
+        fetch('/useraction/produce', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'userId=' + encodeURIComponent(userId) + '&url=' + encodeURIComponent(url)
+        }).then(resp => resp.text()).then(() => {
+            document.getElementById('msgBox').innerText = `已发送埋点: ${userId} ${url}`;
+            setTimeout(() => { document.getElementById('msgBox').innerText = ''; }, 1500);
+            refresh(userId);
+        });
+    };
+
+    // 页面加载时刷新数据
+    refresh(document.querySelector('input[name="userId"]').value);
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Kafka Streams 单词计数实时演示</title>
+    <style>
+        body { background: linear-gradient(120deg, #f7fafd 60%, #c3cfe2 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 540px; margin: 60px auto; background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(44,62,80,0.10); padding: 36px 30px 30px 30px;}
+        h2 { color: #2980b9; margin-bottom: 28px; text-align: center; letter-spacing: 2px; }
+        form { margin-bottom: 24px; }
+        label { color: #34495e; font-size: 1.05em; }
+        input, textarea { padding: 10px 12px; border: 1px solid #b2bec3; border-radius: 8px; font-size: 1.05em; background: #f7fbfd;}
+        textarea { width: 97%; min-height: 40px; resize: none; margin-bottom: 8px;}
+        .btn-row { display: flex; justify-content: center; gap: 18px; margin-top: 10px; }
+        .action-btn { padding: 10px 28px; background: #2980b9; color: #fff; border: none; border-radius: 22px; font-size: 1.08rem; cursor: pointer; text-decoration: none; box-shadow: 0 2px 8px rgba(41,128,185,0.08); transition: background 0.2s, box-shadow 0.2s, transform 0.1s;}
+        .action-btn:hover { background: #2176c1; box-shadow: 0 4px 18px rgba(41,128,185,0.12); transform: translateY(-2px) scale(1.04);}
+        .msg-box { margin-top: 18px; padding: 12px; background: #eaf2fa; color: #2980b9; border-radius: 8px; text-align: center; font-size: 1.08em; box-shadow: 0 2px 8px rgba(41,128,185,0.04);}
+        .history-title { color: #2176c1; margin-top: 36px; margin-bottom: 10px; font-size: 1.08em; letter-spacing: 1px;}
+        table.word-table { width: 100%; border-collapse: collapse; margin-bottom: 0; background: #f8fbfd; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(41,128,185,0.03);}
+        table.word-table th, table.word-table td { padding: 9px 7px; border-bottom: 1px solid #e3e8ee; text-align: center; font-size: 1.05em;}
+        table.word-table th { background: #eaf2fa; color: #2980b9; }
+        table.word-table tr:last-child td { border-bottom: none; }
+        .footer { margin-top: 36px; color: #aaa; font-size: 0.97rem; text-align: center; letter-spacing: 1px;}
+        @media (max-width: 600px) { .container { padding: 16px 2vw; } .btn-row { flex-direction: column; gap: 10px; } table.word-table th, table.word-table td { font-size: 0.95em; } }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Kafka Streams 单词计数实时演示</h2>
+    <form id="produceForm" autocomplete="off">
+        <label>输入英文句子：</label>
+        <textarea name="sentence" placeholder="输入英文句子，如：Kafka Streams is powerful" required></textarea>
+        <div class="btn-row">
+            <button type="submit" class="action-btn">发送句子</button>
+            <a href="/" class="action-btn">返回首页</a>
+        </div>
+    </form>
+    <div class="msg-box" id="msgBox"></div>
+
+    <div>
+        <div class="history-title">单词计数（实时统计）</div>
+        <table class="word-table" id="wordTable">
+            <thead>
+            <tr>
+                <th>单词</th>
+                <th>计数</th>
+            </tr>
+            </thead>
+            <tbody id="wordTableBody">
+            </tbody>
+        </table>
+    </div>
+    <div class="footer">Powered by Miaoyongbin</div>
+</div>
+
+<script>
+    let wordCounts = {};
+
+    // WebSocket连接
+    let stompClient = null;
+    function connectWS() {
+        let socket = new SockJS('/ws/wordcount');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            stompClient.subscribe('/topic/wordcount', function(msg) {
+                let data = JSON.parse(msg.body);
+                console.log('收到推送:', data);
+                wordCounts = data;
+                renderWordCounts();
+            });
+        });
+    }
+    connectWS();
+
+    // 首次拉取
+    fetch('/kafka/wordcount/counts').then(resp => resp.json()).then(data => {
+        wordCounts = data || {};
+        renderWordCounts();
+    });
+
+    // 发送句子
+    document.getElementById('produceForm').onsubmit = function(e) {
+        e.preventDefault();
+        let sentence = this.sentence.value.trim();
+        if (!sentence) return;
+        let msgBox = document.getElementById('msgBox');
+        msgBox.innerText = '已发送: ' + sentence;
+        fetch('/kafka/wordcount/produce', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'sentence=' + encodeURIComponent(sentence)
+        }).then(resp => resp.text()).then(txt => {
+            setTimeout(() => { msgBox.innerText = ''; }, 2000);
+        });
+        this.reset();
+    };
+
+    // 渲染单词计数
+    function renderWordCounts() {
+        let tbody = document.getElementById('wordTableBody');
+        tbody.innerHTML = '';
+        Object.keys(wordCounts).sort().forEach(word => {
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td>${word}</td><td>${wordCounts[word]}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+</body>
+</html>

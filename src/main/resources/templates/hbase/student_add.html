@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>添加学生</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7f7f9; margin: 0; }
+        .container { max-width: 400px; margin: 60px auto; background: #fff; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 32px 36px 30px 36px; }
+        h2 { color: #4a90e2; margin-bottom: 28px; text-align: center; }
+        label { display: block; margin: 16px 0 6px 0; color: #333; }
+        input { width: 100%; padding: 8px; border: 1px solid #d0d7de; border-radius: 5px; font-size: 1em; margin-bottom: 4px; }
+        button { width: 100%; padding: 10px; background: #4a90e2; color: #fff; border: none; border-radius: 5px; font-size: 1.1em; cursor: pointer; margin-top: 20px; transition: background 0.2s;}
+        button:hover { background: #2176c1; }
+        .nav-links { display: flex; justify-content: space-between; margin-top: 18px; }
+        .nav-links a { color: #4a90e2; text-decoration: none; font-size: 1em;}
+        .nav-links a:hover { text-decoration: underline;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>添加学生</h2>
+    <form action="/hbase/student/add" method="post">
+        <label>学号</label>
+        <input name="id" required/>
+        <label>姓名</label>
+        <input name="name" required/>
+        <label>年龄</label>
+        <input name="age" required/>
+        <label>数学分数</label>
+        <input name="score" required/>
+        <button type="submit">添加</button>
+    </form>
+    <div class="nav-links">
+        <a href="/">返回首页</a>
+        <a href="/hbase/student/list">返回学生列表</a>
+    </div>
+</div>
+</body>
+</html>
