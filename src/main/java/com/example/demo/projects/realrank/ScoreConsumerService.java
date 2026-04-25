@@ -5,10 +5,10 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 public class ScoreConsumerService {
     @Autowired
     private SimpMessagingTemplate wsTemplate;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     // 内存排行榜和历史，仅用于WebSocket推送演示（正式应用可用Redis/HBase）
     private final Map<String, Long> totalScoreMap = new HashMap<>();
@@ -36,14 +38,14 @@ public class ScoreConsumerService {
 
     @KafkaListener(topics = "score", groupId = "score-group")
     public void consume(String msg) {
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
+        try {
             JSONObject obj = new JSONObject(msg);
             String userId = obj.getString("userId");
             int score = obj.getInt("score");
             long ts = obj.getLong("ts");
 
             // 1. Redis ZSet排行榜
-            jedis.zincrby("score:rank", score, userId);
+            stringRedisTemplate.opsForZSet().incrementScore("score:rank", userId, score);
 
             // 2. HBase历史得分
             Table table = HBaseUtil.getTable("score_history");

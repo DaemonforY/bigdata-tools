@@ -2,8 +2,10 @@ package com.example.demo.projects.useraction;
 
 import com.example.demo.hbase.HBaseUtil;
 import org.apache.hadoop.hbase.client.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 
 import java.util.*;
 
@@ -15,10 +17,16 @@ import java.util.*;
  */
 @Service
 public class UserActionQueryService {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     public long getRedisCount(String userId) {
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
-            String v = jedis.get("visit:" + userId);
+        try {
+            String v = stringRedisTemplate.opsForValue().get("visit:" + userId);
             return v == null ? 0 : Long.parseLong(v);
+        } catch (DataAccessException e) {
+            System.err.println("Redis 不可用，无法查询访问计数: " + e.getMessage());
+            return 0;
         }
     }
 

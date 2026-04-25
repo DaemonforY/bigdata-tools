@@ -4,9 +4,10 @@ import com.example.demo.hbase.HBaseUtil;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 
 /**
  * @Description
@@ -17,14 +18,18 @@ import redis.clients.jedis.Jedis;
 
 @Service
 public class RiskOrderConsumerService {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     @KafkaListener(topics = "risk-order", groupId = "risk-group")
     public void consume(String msg) {
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
+        try {
             JSONObject order = new JSONObject(msg);
             String orderId = order.getString("orderId");
             String userId = order.getString("userId");
 
-            boolean isBlack = jedis.sismember("blacklist", userId);
+            Boolean isBlackMember = stringRedisTemplate.opsForSet().isMember("blacklist", userId);
+            boolean isBlack = Boolean.TRUE.equals(isBlackMember);
             String status = isBlack ? "BLOCKED" : "NORMAL";
 
             Table table = HBaseUtil.getTable("order_audit");

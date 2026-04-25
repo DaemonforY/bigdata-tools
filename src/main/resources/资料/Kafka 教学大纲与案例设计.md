@@ -201,6 +201,35 @@ docker exec -it kafka-broker bash
 
 ---
 
+### 2.3 端到端实验（10 分钟跑通 Producer→Broker→Consumer）
+
+**目标**：从零启动 Kafka，用 Java 客户端打通发送/消费，能在 UI 里看到分区分布。
+
+```bash
+# 1) 启 broker + UI
+docker compose -f docker/kafka/docker-compose.yml up -d
+bash docker/kafka/init-topics.sh
+
+# 2) 跑 Java Producer（默认发到 test3，3 分区，100 条）
+mvn -q exec:java -Dexec.mainClass=com.example.demo.kafka.demo.KafkaProducerDemo
+
+# 3) 另开一个终端跑 Consumer（同一 group 内会自动均分分区）
+mvn -q exec:java -Dexec.mainClass=com.example.demo.kafka.demo.KafkaConsumerDemo
+
+# 4) 再开一个终端启第二个 Consumer，体验 rebalance
+mvn -q exec:java -Dexec.mainClass=com.example.demo.kafka.demo.KafkaConsumerDemo
+```
+
+打开 <http://localhost:8085> → Topics → `test3` → Messages，能直接看到每条消息
+落在哪个分区。Consumer Groups → `demo-group` 可以看到消费进度（CURRENT-OFFSET）
+和 LAG。
+
+> 同一 `group.id` 下的多个 Consumer 进程会**均分分区**：3 个分区 + 1 个消费者 →
+> 一个消费者扫 3 个分区；3 个分区 + 2 个消费者 → 一个扫 2 个，一个扫 1 个；
+> 3 个分区 + 4 个消费者 → 第 4 个空闲。把 `KafkaConsumerDemo` 跑 N 份观察就懂了。
+
+---
+
 ## 三、Kafka Java API 编程
 
 ### 3.1 Producer API 原理与使用

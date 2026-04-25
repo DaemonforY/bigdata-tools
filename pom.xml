@@ -58,11 +58,6 @@
             <artifactId>json</artifactId>
             <version>20230618</version>
         </dependency>
-        <dependency>
-            <groupId>redis.clients</groupId>
-            <artifactId>jedis</artifactId>
-            <version>5.0.0</version>
-        </dependency>
         <!--        <dependency>-->
         <!--            <groupId>org.apache.hbase</groupId>-->
         <!--            <artifactId>hbase-client</artifactId>-->
@@ -156,7 +151,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.example.demo.DemoApplication</mainClass>
-                    <skip>true</skip>
                     <!-- mvn spring-boot:run 时也自动带上 hosts 映射和 SecurityManager 开关，
                          否则连接 HBase 会抛 UnknownHostException: hbase-docker -->
                     <jvmArguments>-Djava.security.manager=allow -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local</jvmArguments>
@@ -167,6 +161,10 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <!-- 只跳过 repackage，spring-boot:run 仍可正常启动 -->
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

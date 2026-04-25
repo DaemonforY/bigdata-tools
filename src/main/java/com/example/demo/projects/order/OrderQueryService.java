@@ -4,8 +4,10 @@ import com.example.demo.hbase.HBaseUtil;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Table;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 
 import java.util.*;
 
@@ -18,9 +20,15 @@ import java.util.*;
 
 @Service
 public class OrderQueryService {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     public String getOrderStatusFromRedis(String orderId) {
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
-            return jedis.get("order:status:" + orderId);
+        try {
+            return stringRedisTemplate.opsForValue().get("order:status:" + orderId);
+        } catch (DataAccessException e) {
+            System.err.println("Redis 不可用，无法查询订单状态: " + e.getMessage());
+            return "Redis未连接";
         }
     }
 

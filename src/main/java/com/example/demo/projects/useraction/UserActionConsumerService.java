@@ -4,9 +4,10 @@ import com.example.demo.hbase.HBaseUtil;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 
 /**
  * @Description
@@ -16,16 +17,19 @@ import redis.clients.jedis.Jedis;
  */
 @Service
 public class UserActionConsumerService {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     @KafkaListener(topics = "user-action", groupId = "useraction-group")
     public void consume(String msg) {
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
+        try {
             JSONObject obj = new JSONObject(msg);
             String userId = obj.getString("userId");
             String url = obj.getString("url");
             long ts = obj.getLong("ts");
 
             // Redis计数器
-            jedis.incr("visit:" + userId);
+            stringRedisTemplate.opsForValue().increment("visit:" + userId);
 
             // HBase存日志
             Table table = HBaseUtil.getTable("user_action");

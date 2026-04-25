@@ -5,8 +5,10 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -20,27 +22,38 @@ import java.util.*;
 
 @Service
 public class RankQueryService {
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     // 实时排行榜TopN
     public List<Map<String, Object>> getTopN(int n) {
         List<Map<String, Object>> list = new ArrayList<>();
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
-            List<String> users = jedis.zrevrange("score:rank", 0, n - 1);
+        try {
+            Set<String> users = stringRedisTemplate.opsForZSet().reverseRange("score:rank", 0, n - 1);
+            if (users == null) {
+                return list;
+            }
             for (String user : users) {
-                Double score = jedis.zscore("score:rank", user);
+                Double score = stringRedisTemplate.opsForZSet().score("score:rank", user);
                 Map<String, Object> map = new HashMap<>();
                 map.put("userId", user);
                 map.put("score", score == null ? 0 : score.intValue());
                 list.add(map);
             }
+        } catch (DataAccessException e) {
+            System.err.println("Redis 不可用，无法查询排行榜: " + e.getMessage());
         }
         return list;
     }
 
     // 某用户总分
     public int getUserTotalScore(String userId) {
-        try (Jedis jedis = new Jedis("localhost", 6379)) {
-            Double score = jedis.zscore("score:rank", userId);
+        try {
+            Double score = stringRedisTemplate.opsForZSet().score("score:rank", userId);
             return score == null ? 0 : score.intValue();
+        } catch (DataAccessException e) {
+            System.err.println("Redis 不可用，无法查询用户总分: " + e.getMessage());
+            return 0;
         }
     }
 

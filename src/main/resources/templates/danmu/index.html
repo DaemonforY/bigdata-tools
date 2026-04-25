@@ -32,11 +32,12 @@
     <button onclick="sendDanmu()">发送</button>
 </div>
 <script>
-    // 只改动这里的接口路径
     const apiBase = "/api/danmus";
     const apiList = "/api/danmus/list";
     const danmuWall = document.getElementById('danmuWall');
+    const danmuInput = document.getElementById('danmuInput');
     const colors = ["#ff4e50","#f9d423","#6a82fb","#fc5c7d","#20e3b2","#fcb045","#f7971e","#fdc830"];
+    const renderedIds = new Set();
 
     function randomColor() {
         return colors[Math.floor(Math.random() * colors.length)];
@@ -57,26 +58,28 @@
         return Math.floor(Math.random() * TRACK_COUNT);
     }
 
-    function showDanmu(content) {
+    function showDanmu(item) {
+        if (!item || renderedIds.has(item.id)) {
+            return;
+        }
+        renderedIds.add(item.id);
+
         const danmu = document.createElement("div");
         danmu.className = "danmu";
-        danmu.textContent = content;
+        danmu.textContent = item.content;
 
-        // 轨道分配
         const trackHeight = danmuWall.offsetHeight / TRACK_COUNT;
         const track = getNextTrack();
         danmu.style.top = (track * trackHeight + 5) + "px";
         danmu.style.color = randomColor();
 
-        // 先放到屏幕外右侧，获取宽度
         danmu.style.left = window.innerWidth + 100 + "px";
         danmuWall.appendChild(danmu);
 
-        // 动画时长
         const duration = 8 + Math.random() * 2;
         const danmuWidth = danmu.offsetWidth;
         const startX = window.innerWidth + Math.random() * 200;
-        const endX = -danmuWidth - 4000;
+        const endX = -danmuWidth - 100;
 
         danmu.animate([
             { left: startX + "px" },
@@ -90,39 +93,46 @@
         setTimeout(() => {
             danmu.remove();
             trackOccupied[track] = false;
+            renderedIds.delete(item.id);
         }, duration * 1000);
     }
 
     function sendDanmu() {
-        const input = document.getElementById('danmuInput');
-        const content = input.value.trim();
+        const content = danmuInput.value.trim();
         if (!content) return;
         fetch(apiBase, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content })
-        }).then(res => res.json())
+        }).then(res => {
+            if (!res.ok) {
+                throw new Error("发送失败");
+            }
+            return res.json();
+        })
             .then(data => {
-                showDanmu(data.content);
-                input.value = "";
+                showDanmu(data);
+                danmuInput.value = "";
             });
     }
 
-    setInterval(() => {
+    function syncDanmus() {
         fetch(apiList)
             .then(res => res.json())
             .then(list => {
-                danmuWall.innerHTML = "";
-                list.slice(-12).forEach(d => showDanmu(d.content));
+                list.slice(-12).forEach(showDanmu);
             });
-    }, 3000);
+    }
 
-    window.onload = () => {
-        fetch(apiList)
-            .then(res => res.json())
-            .then(list => {
-                list.slice(-12).forEach(d => showDanmu(d.content));
-            });
+    danmuInput.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            sendDanmu();
+        }
+    });
+
+    window.onload = function() {
+        syncDanmus();
+        setInterval(syncDanmus, 3000);
     };
 </script>
 </body>
