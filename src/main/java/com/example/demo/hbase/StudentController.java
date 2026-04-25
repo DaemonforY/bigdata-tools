@@ -22,24 +22,24 @@ public class StudentController {
     // 学生列表页面
     @GetMapping("/list")
     public String list(Model model) throws Exception {
-        Table table = HBaseUtil.getTable("student");
-        Scan scan = new Scan();
-        return getString(model, table, scan);
+        return scanToView(model, new Scan());
     }
 
-    private String getString(Model model, Table table, Scan scan) throws IOException {
-        ResultScanner scanner = table.getScanner(scan);
+    private String scanToView(Model model, Scan scan) throws IOException {
         List<Map<String, String>> students = new ArrayList<>();
-        for (Result res : scanner) {
-            Map<String, String> stu = new HashMap<>();
-            String rowKey = Bytes.toString(res.getRow());
-            stu.put("id", rowKey);
-            stu.put("name", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("name"))));
-            stu.put("age", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("age"))));
-            stu.put("score", Bytes.toString(res.getValue(Bytes.toBytes("score"), Bytes.toBytes("math"))));
-            students.add(stu);
+        try (Table table = HBaseUtil.getTable("student");
+             ResultScanner scanner = table.getScanner(scan)) {
+            for (Result res : scanner) {
+                Map<String, String> stu = new HashMap<>();
+                stu.put("id", Bytes.toString(res.getRow()));
+                stu.put("name", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("name"))));
+                stu.put("age", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("age"))));
+                stu.put("score", Bytes.toString(res.getValue(Bytes.toBytes("score"), Bytes.toBytes("math"))));
+                students.add(stu);
+            }
+        } catch (Exception e) {
+            throw new IOException(e);
         }
-        table.close();
         model.addAttribute("students", students);
         return "hbase/student_list";
     }
@@ -54,28 +54,27 @@ public class StudentController {
     @PostMapping("/add")
     public String add(@RequestParam String id, @RequestParam String name,
                       @RequestParam String age, @RequestParam String score) throws Exception {
-        Table table = HBaseUtil.getTable("student");
-        Put put = new Put(Bytes.toBytes(id));
-        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("name"), Bytes.toBytes(name));
-        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("age"), Bytes.toBytes(age));
-        put.addColumn(Bytes.toBytes("score"), Bytes.toBytes("math"), Bytes.toBytes(score));
-        table.put(put);
-        table.close();
-        return "redirect:/student/list";
+        try (Table table = HBaseUtil.getTable("student")) {
+            Put put = new Put(Bytes.toBytes(id));
+            put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("name"), Bytes.toBytes(name));
+            put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("age"), Bytes.toBytes(age));
+            put.addColumn(Bytes.toBytes("score"), Bytes.toBytes("math"), Bytes.toBytes(score));
+            table.put(put);
+        }
+        return "redirect:/hbase/student/list";
     }
 
     // 查看学生详情
     @GetMapping("/detail/{id}")
     public String detail(@PathVariable String id, Model model) throws Exception {
-        Table table = HBaseUtil.getTable("student");
-        Get get = new Get(Bytes.toBytes(id));
-        Result res = table.get(get);
         Map<String, String> stu = new HashMap<>();
-        stu.put("id", id);
-        stu.put("name", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("name"))));
-        stu.put("age", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("age"))));
-        stu.put("score", Bytes.toString(res.getValue(Bytes.toBytes("score"), Bytes.toBytes("math"))));
-        table.close();
+        try (Table table = HBaseUtil.getTable("student")) {
+            Result res = table.get(new Get(Bytes.toBytes(id)));
+            stu.put("id", id);
+            stu.put("name", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("name"))));
+            stu.put("age", Bytes.toString(res.getValue(Bytes.toBytes("info"), Bytes.toBytes("age"))));
+            stu.put("score", Bytes.toString(res.getValue(Bytes.toBytes("score"), Bytes.toBytes("math"))));
+        }
         model.addAttribute("stu", stu);
         return "hbase/student_detail";
     }
@@ -83,25 +82,24 @@ public class StudentController {
     // 按前缀查询
     @GetMapping("/prefix")
     public String prefix(@RequestParam String prefix, Model model) throws Exception {
-        Table table = HBaseUtil.getTable("student");
         Scan scan = new Scan();
         scan.setRowPrefixFilter(Bytes.toBytes(prefix));
-        return getString(model, table, scan);
+        return scanToView(model, scan);
     }
 
     // 多版本查询
     @GetMapping("/version/{id}")
     public String version(@PathVariable String id, Model model) throws Exception {
-        Table table = HBaseUtil.getTable("student");
-        Get get = new Get(Bytes.toBytes(id));
-        get.readAllVersions();
-        get.addColumn(Bytes.toBytes("info"), Bytes.toBytes("name"));
-        Result res = table.get(get);
         List<String> names = new ArrayList<>();
-        for (Cell cell : res.rawCells()) {
-            names.add(Bytes.toString(CellUtil.cloneValue(cell)) + " (ts=" + cell.getTimestamp() + ")");
+        try (Table table = HBaseUtil.getTable("student")) {
+            Get get = new Get(Bytes.toBytes(id));
+            get.readAllVersions();
+            get.addColumn(Bytes.toBytes("info"), Bytes.toBytes("name"));
+            Result res = table.get(get);
+            for (Cell cell : res.rawCells()) {
+                names.add(Bytes.toString(CellUtil.cloneValue(cell)) + " (ts=" + cell.getTimestamp() + ")");
+            }
         }
-        table.close();
         model.addAttribute("id", id);
         model.addAttribute("names", names);
         return "hbase/student_versions";

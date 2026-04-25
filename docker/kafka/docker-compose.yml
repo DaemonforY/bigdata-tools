@@ -1,0 +1,67 @@
+# 单节点 Kafka（KRaft 模式，无 ZooKeeper）+ Kafka UI
+# 仅用于教学演示，请勿在生产环境使用
+#
+# 启动:        docker compose -f docker/kafka/docker-compose.yml up -d
+# 创建演示topic: docker exec kafka-broker /opt/kafka/bin/kafka-topics.sh \
+#                  --bootstrap-server localhost:9092 \
+#                  --create --topic test --partitions 3 --replication-factor 1
+# Kafka UI:    http://localhost:8085
+# 停止:        docker compose -f docker/kafka/docker-compose.yml down
+#
+# 镜像 apache/kafka:3.9.0 支持 arm64 / amd64 双架构，Apple Silicon 原生运行。
+
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: kafka-broker
+    hostname: kafka
+    ports:
+      # 宿主机 Java 客户端连接 -> localhost:9092
+      - "9092:9092"
+    environment:
+      # KRaft 单节点：自身既是 broker 又是 controller
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      CLUSTER_ID: "5L6g3nShT-eMCtK--X86sw"
+
+      # listener：监听所有网卡的 9092（broker）和 9093（controller）
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      # 仅向客户端宣告 PLAINTEXT 的 localhost:9092（CONTROLLER 不对外）
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # 单节点必备：所有副本因子设为 1，重平衡不等
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # 单节点 KRaft 控制副本因子也需要 1
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8085:8080"
+    extra_hosts:
+      # 容器内部解析 localhost 时不会走宿主机；用 host-gateway 让 kafka-ui
+      # 能访问宿主机映射的 9092 端口（Docker Desktop 也可直接用 host.docker.internal）
+      - "host.docker.internal:host-gateway"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: host.docker.internal:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    restart: unless-stopped
+
+volumes:
+  kafka-data:

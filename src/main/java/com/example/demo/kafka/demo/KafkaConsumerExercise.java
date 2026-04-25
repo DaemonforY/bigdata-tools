@@ -13,13 +13,19 @@ import java.util.*;
  * @Version 1.0
  */
 public class KafkaConsumerExercise {
+
+    private static final String BOOTSTRAP_SERVERS =
+            System.getProperty("kafka.bootstrap.servers",
+                    System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"));
+
     public static void main(String[] args) {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "39.99.241.140:9092");
-        props.put("group.id", "demo-group");
+        props.put("bootstrap.servers", BOOTSTRAP_SERVERS);
+        props.put("group.id", "demo-group-exercise");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("enable.auto.commit", "false"); // 关闭自动提交
+        props.put("auto.offset.reset", "earliest");
+        props.put("enable.auto.commit", "false"); // 手动提交，演示 commitSync()
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         consumer.subscribe(Arrays.asList("test3"));

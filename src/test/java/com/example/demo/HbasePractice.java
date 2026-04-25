@@ -19,7 +19,8 @@ public class HbasePractice {
     @Test
     public void hbaseExample() throws IOException {
         Configuration conf = HBaseConfiguration.create();
-        conf.set("hbase.zookeeper.quorum", "hadoop102,hadoop103,hadoop104");
+        conf.set("hbase.zookeeper.quorum", System.getProperty("hbase.zookeeper.quorum", "localhost"));
+        conf.set("hbase.zookeeper.property.clientPort", System.getProperty("hbase.zookeeper.property.clientPort", "2181"));
 
         try (Connection connection = ConnectionFactory.createConnection(conf)) {
             Table table = connection.getTable(TableName.valueOf("user"));
@@ -38,7 +39,8 @@ public class HbasePractice {
 //    用HBase Shell创建一个订单表（order），包含buyer和item两个列族，插入三条订单数据，并用scan命令查询。
     public void prac1() throws IOException {
         Configuration conf = HBaseConfiguration.create();
-        conf.set("hbase.zookeeper.quorum", "hadoop102,hadoop103,hadoop104");
+        conf.set("hbase.zookeeper.quorum", System.getProperty("hbase.zookeeper.quorum", "localhost"));
+        conf.set("hbase.zookeeper.property.clientPort", System.getProperty("hbase.zookeeper.property.clientPort", "2181"));
         try(Connection connection = ConnectionFactory.createConnection(conf)) {
             Table table = connection.getTable(TableName.valueOf("order"));
             Put put = new Put("1001".getBytes());
@@ -55,7 +57,8 @@ public class HbasePractice {
 //    用Java实现：批量插入100条商品数据到商品表（product），并查询某个商品详情。
     public void prac2() throws IOException {
         Configuration conf = HBaseConfiguration.create();
-        conf.set("hbase.zookeeper.quorum", "hadoop102,hadoop103,hadoop104");
+        conf.set("hbase.zookeeper.quorum", System.getProperty("hbase.zookeeper.quorum", "localhost"));
+        conf.set("hbase.zookeeper.property.clientPort", System.getProperty("hbase.zookeeper.property.clientPort", "2181"));
         try(Connection connection = ConnectionFactory.createConnection(conf)) {
             Table table = connection.getTable(TableName.valueOf("product"));
             for (int i = 0; i <100 ; i++) {

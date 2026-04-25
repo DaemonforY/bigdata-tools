@@ -1,0 +1,56 @@
+# 单机版 HBase（standalone 模式：HMaster + RegionServer + ZooKeeper 全在一个容器里）
+# 仅用于教学演示，请勿在生产环境使用
+#
+# 启动:   docker compose -f docker/hbase/docker-compose.yml up -d
+# 进入 shell: docker exec -it hbase-standalone hbase shell
+# 停止:   docker compose -f docker/hbase/docker-compose.yml down
+#
+# Apple Silicon (M1/M2/M3) 注意：harisekhon/hbase 仅有 amd64 镜像，
+# 通过 platform 指定走 Rosetta，性能损失可接受，教学场景够用。
+
+services:
+  hbase:
+    image: harisekhon/hbase:latest
+    platform: linux/amd64
+    container_name: hbase-standalone
+    # hostname 决定 RS/Master 在 ZK 里登记的地址（也是其 RPC 监听地址）。
+    # 必须是宿主机能解析到容器 docker 端口映射 IP 的名字。
+    # 这里用 hbase-docker，要求宿主机 /etc/hosts 加：127.0.0.1 hbase-docker
+    hostname: hbase-docker
+    ports:
+      # ZooKeeper：Java 客户端连接入口
+      - "2181:2181"
+      # HMaster
+      - "16000:16000"
+      # HMaster Web UI -> http://localhost:16010
+      - "16010:16010"
+      # RegionServer
+      - "16020:16020"
+      # RegionServer Web UI -> http://localhost:16030
+      - "16030:16030"
+      # REST 网关（可选）-- 如需要打开请确保宿主机端口空闲
+      # - "8080:8080"
+      # - "8085:8085"
+      # Thrift 网关（可选）
+      # - "9090:9090"
+      # - "9095:9095"
+    environment:
+      # 容器内监听全部网卡，方便从宿主机直连
+      # 与 hostname 保持一致；RS/Master 会用此名字绑定到容器 bridge IP，
+      # 然后通过 docker 端口映射对外提供服务。客户端必须能解析此名字到 127.0.0.1。
+      HBASE_CONF_hbase_master_hostname: hbase-docker
+      HBASE_CONF_hbase_regionserver_hostname: hbase-docker
+      # Apple Silicon + Rosetta 跑 amd64 镜像时，容器经常被宿主"挂起"几十秒到几分钟，
+      # 默认 ZK 会话 90s 太短，HMaster/RS 会被踢出集群且不会自重启。
+      # 把会话和心跳都拉长，给 Rosetta 调度抖动留余地。
+      HBASE_CONF_zookeeper_session_timeout: "300000"
+      HBASE_CONF_hbase_zookeeper_property_tickTime: "6000"
+      HBASE_CONF_hbase_zookeeper_property_maxSessionTimeout: "600000"
+    volumes:
+      - hbase-data:/hbase-data
+      - hbase-zk:/zookeeper-data
+    restart: unless-stopped
+
+volumes:
+  hbase-data:
+  hbase-zk:

@@ -13,7 +13,8 @@ import java.util.*;
 public class WordCountConsumer {
     public static void main(String[] args) {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "39.98.123.172:9092");
+        props.put("bootstrap.servers", System.getProperty("kafka.bootstrap.servers", "localhost:9092"));
+        props.put("auto.offset.reset", "earliest");
         props.put("group.id", "wordcount-group");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.LongDeserializer");

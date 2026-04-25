@@ -118,24 +118,68 @@
 
 ---
 ### 1.3 HBase 安装与启动
-- 本地伪分布式模式
-- 启动/停止 HBase 服务
-- HBase Shell 基本命令
 
-#### 案例
+本节给出**两条可走通**的本地路径，按学生机器条件二选一。**强烈推荐 Docker 方式**——
+单条命令拉起，秒级清空重来，避开 Hadoop 配置坑。
+
+#### 方式 A（推荐）：Docker 单机版
+
+仓库已经准备好 `docker/hbase/docker-compose.yml`，启动只需：
+
 ```bash
-# 启动HBase
+docker compose -f docker/hbase/docker-compose.yml up -d
+```
+
+> Apple Silicon (M1/M2/M3) 自动通过 Rosetta 跑 amd64 镜像，无需手动配置。
+
+启动后访问 <http://localhost:16010> 看到 HMaster Web UI 即成功。
+**关键一步**：让本机能把 `hbase-docker` 解析到 127.0.0.1。两个方法二选一：
+
+```bash
+# 方法 A（推荐，无需 sudo）：用 JDK 私有 hosts 文件
+# 仓库 pom.xml 已经在 surefire 里注入：-Djdk.net.hosts.file=docker/hbase/hosts.local
+# IDEA 单跑测试时把这条加到 VM Options 即可。
+
+# 方法 B：改系统 hosts
+echo "127.0.0.1 hbase-docker" | sudo tee -a /etc/hosts
+```
+
+进入 shell：
+
+```bash
+docker exec -it hbase-standalone hbase shell
+```
+
+> 一键灌入演示数据：`docker exec -i hbase-standalone hbase shell < docker/hbase/init-tables.hbase`
+> 详细说明见 `docker/hbase/README.md`。
+
+#### 方式 B：本地伪分布式
+
+需要先装好 JDK 8/11、Hadoop（伪分布式）和 ZooKeeper，再下载 HBase tar 包，
+配置 `hbase-site.xml` 指向本地 HDFS 与 ZK，用 `start-hbase.sh` 启动。
+对教学场景而言负担过重，**仅在没有 Docker 环境时使用**。
+
+```bash
+# 启动 / 停止
 start-hbase.sh
+stop-hbase.sh
 
-# 进入Shell
+# 进入 Shell
 hbase shell
-
-# 查看所有表
 list
 ```
 
+#### 必懂：Java 客户端为什么需要 hosts 映射？
+
+ZooKeeper 里登记的 RegionServer 地址是 RegionServer 进程**自身看到的 hostname**
+（容器里就是容器的 hostname）。客户端拿到这个名字后必须能解析到一个可达的 IP，
+所以本机要把它指回 `127.0.0.1`。这是 HBase + Docker 教学最高频的"卡死"点，
+务必给学生强调一遍。
+
 **练习**
-- 启动本地HBase，进入shell，查看表列表。
+- 用 Docker 启动 HBase，访问 16010 Web UI。
+- 进入 shell 执行 `list`、`status`，观察集群状态。
+- 故意不加 hosts 映射，跑一次 Java 客户端，复现并理解错误信息。
 
 ---
 
@@ -206,56 +250,104 @@ scan 'user', {FILTER=>"SingleColumnValueFilter('info','age',=,'binary:20')"}
 - HBase Java 客户端配置
 - 表的增删查改
 
-#### 案例
+#### 最小代码（连接到本地 Docker HBase）
+
 ```java
-// 依赖：hbase-client
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.conf.Configuration;
 
 Configuration conf = HBaseConfiguration.create();
-conf.set("hbase.zookeeper.quorum", "localhost");
-try (Connection connection = ConnectionFactory.createConnection(conf)) {
-    Table table = connection.getTable(TableName.valueOf("user"));
-    // 插入数据
+conf.set("hbase.zookeeper.quorum", "localhost");        // ← Docker 直连
+conf.set("hbase.zookeeper.property.clientPort", "2181");
+
+try (Connection connection = ConnectionFactory.createConnection(conf);
+     Table table = connection.getTable(TableName.valueOf("user"))) {
+
+    // 插入
     Put put = new Put("1001".getBytes());
     put.addColumn("info".getBytes(), "name".getBytes(), "Alice".getBytes());
     table.put(put);
 
-    // 查询数据
-    Get get = new Get("1001".getBytes());
-    Result result = table.get(get);
+    // 查询
+    Result result = table.get(new Get("1001".getBytes()));
     byte[] value = result.getValue("info".getBytes(), "name".getBytes());
     System.out.println(new String(value));
 }
 ```
 
+> ⚠️ 在跑这段代码前请确认：(1) 已 `docker compose up`；(2) `/etc/hosts` 已加
+> `127.0.0.1 hbase-docker`。否则 `Connection` 会卡死在解析 RegionServer 地址。
+
+#### 仓库内的端到端示例
+
+| 文件 | 用途 |
+|------|------|
+| `src/test/java/com/example/demo/HbasePractice.java` | JUnit 测试：插入、批量插入、Get |
+| `src/main/java/com/example/demo/hbase/HBaseUtil.java` | 工具类：单例 Connection，按系统属性/环境变量切换 ZK 地址 |
+| `src/main/java/com/example/demo/hbase/StudentController.java` | Spring Boot Controller：列表/详情/添加/前缀查询/多版本 |
+| `src/main/resources/templates/hbase/*.html` | Thymeleaf 页面 |
+
+启动 Spring Boot 后访问 <http://localhost:8090/hbase/student/list> 即可联动 HBase。
+
 **练习**
-- 用Java代码实现：创建表、插入一条数据、查询一条数据。
+- 用 Java 代码实现：插入一条数据、查询一条数据（在 `HbasePractice` 里加一个新方法）。
+- 在 Spring Boot 页面新增"按年龄删除学生"功能，理解 `Delete` API。
 
 ---
 
 ## 五、HBase 高级特性与最佳实践
 
 ### 5.1 RowKey 设计与热点问题
-- 行键散列、前缀反转、盐值分区
-- 防止热点和数据倾斜
 
-### 5.2 批量操作与Scan优化
-- 批量Put、批量Get、Scan分页
-- 过滤器链、只查必要列族
+**核心原则**：HBase 按 RowKey **字典序**全局排序，连续相邻的 RowKey 会落到同一
+Region。设计不当会导致**热点 Region**（写入压在某一台 RegionServer 上）和
+**扫描效率低下**（要查的数据散在全集群）。
+
+#### 反模式 vs 正确做法（必看对比）
+
+| 场景             | 反模式（热点）        | 正确做法                                    |
+|------------------|------------------------|---------------------------------------------|
+| 用自增 ID        | `1, 2, 3, 4...`        | 反转：`...4, 3, 2, 1`，或前置 hash 前缀     |
+| 用时间戳         | `20260425103000`       | `Long.MAX - ts`（倒序）或 `bucket_ts`       |
+| 用手机号         | `13800000001`（前缀同）| `MD5(phone)[0..3] + phone`，散列前缀打散    |
+| 多维查询         | 单列查 → 全表 scan     | RowKey 拼接：`userId_yyyyMMdd_orderId`      |
+
+#### 三种常见打散方法
+
+1. **加盐（Salting）**：前置一个 hash 前缀（`hashCode(rowkey) % N`），N 个桶。
+   缺点：丢失原始有序性，不能直接前缀范围扫。
+2. **反转（Reverse）**：把单调字段倒过来，如手机号 `13800000001 → 10000000831`。
+   保留原始信息，又打散了写入热点。
+3. **预分区（Pre-splitting）**：建表时指定 split keys，避免初期所有写入都
+   挤在一个默认 Region 里。
+
+```bash
+# 建表时按 16 个桶预分区
+create 'log', {NAME => 'cf'}, SPLITS => ['1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
+```
+
+### 5.2 批量操作与 Scan 优化
+- 批量 `table.put(List<Put>)` 比循环单 put 快 10-100 倍
+- `Scan.setCaching(int)` 调大扫描缓存（默认 1，建议 100~1000）
+- `Scan.setBatch(int)` 控制每次 RPC 返回的列数，列族很宽时尤其重要
+- 只取需要的列：`scan.addColumn(cf, col)`，避免全列族扫描
+- 过滤器链 `FilterList` 组合 `RowFilter + SingleColumnValueFilter`
 
 ### 5.3 HBase 性能优化与集群
-- Region 分裂与合并
-- BloomFilter、压缩、TTL、预分区
-- HBase 与 Hadoop 集成
+- Region 分裂与合并（Compaction：minor/major）
+- BloomFilter（按 RowKey 还是 Row+Col 决定 false positive 率）
+- 压缩算法：SNAPPY 通用首选，ZSTD 压缩比更高
+- TTL：自动过期，适合日志/会话类数据
+- HBase 与 Hadoop/Spark 集成：通过 `TableInputFormat` 做批处理
 
 #### 案例
-- 用Java批量插入1000条数据并扫描输出
+- 用 Java 批量插入 1000 条数据并扫描输出（已在 `HbasePractice#prac2` 中演示）
 
 **练习**
-- 设计一个合理的RowKey方案，实现按学号前缀高效查询学生信息。
-- 用Java批量插入并Scan查询所有数据。
+- 给定订单表，写出三种 RowKey 方案：纯订单号、`userId_orderId`、
+  `MD5(userId)[0..3]_userId_orderId`，分别说明擅长 / 不擅长哪种查询。
+- 用 Java 批量插入 1000 条并用 `setCaching(500)` 扫描，对比有无 caching 的耗时。
 
 ---
 

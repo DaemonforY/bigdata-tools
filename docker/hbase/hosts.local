@@ -1,0 +1,7 @@
+# JVM 私有 hosts 文件（Java 9+ via -Djdk.net.hosts.file=...）
+# 用于在不修改系统 /etc/hosts 的前提下，把 hbase-docker 解析到本地 docker 容器
+# 注意：该文件会完全替代系统 /etc/hosts，所以本机名（hostname 输出）也必须在这里
+127.0.0.1 hbase-docker
+127.0.0.1 localhost
+127.0.0.1 bogon
+::1       localhost bogon

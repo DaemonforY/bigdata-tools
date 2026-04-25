@@ -1,0 +1,20 @@
+# 课堂演示用表
+# docker exec -i hbase-standalone hbase shell < docker/hbase/init-tables.hbase
+
+create_namespace 'demo' rescue nil
+
+create 'student', 'info', 'score'
+create 'order',   'buyer', 'item'
+create 'product', 'name',  'price'
+create 'user',    'info'
+
+# 写一些演示数据
+put 'student', '1001', 'info:name',  'Alice'
+put 'student', '1001', 'info:age',   '20'
+put 'student', '1001', 'score:math', '95'
+
+put 'student', '1002', 'info:name',  'Bob'
+put 'student', '1002', 'info:age',   '21'
+put 'student', '1002', 'score:math', '88'
+
+list

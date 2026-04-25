@@ -13,7 +13,7 @@ import java.util.Properties;
 public class WordProducer {
     public static void main(String[] args) {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "39.98.123.172:9092");
+        props.put("bootstrap.servers", System.getProperty("kafka.bootstrap.servers", "localhost:9092"));
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 

@@ -29,6 +29,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.github.xiaoymin</groupId>
             <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
             <version>4.4.0</version>
@@ -77,6 +82,13 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
+            <version>3.3.1</version>
+        </dependency>
+        <!-- 必须显式声明，覆盖 hbase-client 传递依赖的旧版 hadoop-auth 2.10.0；
+             否则会抛 NoSuchMethodError: HadoopKerberosName.setRuleMechanism -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-auth</artifactId>
             <version>3.3.1</version>
         </dependency>
 
@@ -129,12 +141,25 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- JDK 17+ 关闭 SecurityManager，但 Hadoop UGI 仍会调用 Subject.getSubject。
+                         这里显式允许，否则 HBase 客户端连接抛 UnsupportedOperationException。 -->
+                    <!-- jdk.net.hosts.file 让 JVM 用项目内的 hosts 文件，避免改系统 /etc/hosts -->
+                    <argLine>-Djava.security.manager=allow -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.example.demo.DemoApplication</mainClass>
                     <skip>true</skip>
+                    <!-- mvn spring-boot:run 时也自动带上 hosts 映射和 SecurityManager 开关，
+                         否则连接 HBase 会抛 UnknownHostException: hbase-docker -->
+                    <jvmArguments>-Djava.security.manager=allow -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local</jvmArguments>
                 </configuration>
                 <executions>
                     <execution>

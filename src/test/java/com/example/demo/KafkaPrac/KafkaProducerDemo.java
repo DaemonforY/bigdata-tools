@@ -46,7 +46,7 @@ public class KafkaProducerDemo {
 
     private static KafkaProducer<String, String> getStringStringKafkaProducer() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "hadoop102:9092");
+        props.put("bootstrap.servers", System.getProperty("kafka.bootstrap.servers", "localhost:9092"));
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         // 可选：提高可靠性

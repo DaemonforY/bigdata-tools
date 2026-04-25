@@ -14,13 +14,17 @@ import java.util.Properties;
  * @Version 1.0
  */
 public class KafkaConsumerDemo {
-    public static void main(String[] args) {
-        // 1. 配置Consumer参数
-        KafkaConsumer<String, String> consumer = getStringStringKafkaConsumer();
 
-        // 3. 消费消息并统计总数
-        try (consumer) {
-            consumer.subscribe(List.of("test1"));
+    private static final String BOOTSTRAP_SERVERS =
+            System.getProperty("kafka.bootstrap.servers",
+                    System.getenv().getOrDefault("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"));
+
+    /** 默认订阅 test3，与 KafkaProducerDemo 一致；可通过 -Dkafka.topic=... 覆盖 */
+    private static final String TOPIC = System.getProperty("kafka.topic", "test3");
+
+    public static void main(String[] args) {
+        try (KafkaConsumer<String, String> consumer = buildConsumer()) {
+            consumer.subscribe(List.of(TOPIC));
             int totalCount = 0;
             while (true) {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
@@ -33,17 +37,16 @@ public class KafkaConsumerDemo {
         }
     }
 
-    private static KafkaConsumer<String, String> getStringStringKafkaConsumer() {
+    private static KafkaConsumer<String, String> buildConsumer() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", "39.99.241.140:9092");
+        props.put("bootstrap.servers", BOOTSTRAP_SERVERS);
         props.put("group.id", "demo-group");
         props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        // 自动提交offset（可选）
+        // 第一次启动从最早开始消费，便于课堂演示
+        props.put("auto.offset.reset", "earliest");
         props.put("enable.auto.commit", "true");
         props.put("auto.commit.interval.ms", "1000");
-
-        // 2. 创建Consumer实例并订阅topic
         return new KafkaConsumer<>(props);
     }
 }

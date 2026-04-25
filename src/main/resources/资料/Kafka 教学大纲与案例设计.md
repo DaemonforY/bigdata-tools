@@ -41,8 +41,12 @@ Kafka 是一个**分布式、高吞吐、可扩展、持久化的消息队列与
 - **Consumer Group**  
   消费者组，组内每个 Partition 只会被一个消费者消费，支持水平扩展。
 
-- **Zookeeper/KRaft**  
-  Kafka 3.x 之前依赖 Zookeeper 进行元数据管理和选举，3.x 支持 KRaft（Kafka自带Raft协议）替代ZK。
+- **Zookeeper / KRaft（控制器/元数据）**
+  - 旧架构：Kafka **2.x 及更早** 依赖外部 ZooKeeper 管理元数据、选主、健康检查
+  - 新架构：Kafka **3.3+ 起 KRaft 模式生产可用**（基于 Kafka 自带 Raft 协议），不再
+    需要 ZooKeeper。**3.5 起为推荐路径**，4.0 起 ZooKeeper 模式被移除
+  - **教学环境一律用 KRaft**：架构更简单、组件更少；本仓库 `docker/kafka/docker-compose.yml`
+    使用 KRaft 单节点（`process.roles=broker,controller`）
 
 #### 消息存储机制
 
@@ -134,35 +138,66 @@ Producer  -->  [Topic-Partition-Leader] (Kafka Broker集群) <--> Consumer Group
 
 ## 二、Kafka 安装与命令行操作
 
-### 2.1 环境准备
-- 下载与启动Kafka（本地/伪分布式）
-- 启动Zookeeper和Broker
+### 2.1 环境准备 —— 推荐 Docker（KRaft 模式）
+
+> **KRaft (Kafka Raft) 是 Kafka 3.x 起的元数据共识协议**，自带 Raft，
+> **不再需要 ZooKeeper**。新教学一律用 KRaft，老教程里的 zookeeper-server-start.sh
+> 可以扔了。
+
+仓库已经准备好 `docker/kafka/docker-compose.yml`（apache/kafka:3.9.0 + Kafka UI），
+启动只需：
+
+```bash
+docker compose -f docker/kafka/docker-compose.yml up -d
+bash docker/kafka/init-topics.sh         # 一键建演示用 topic
+```
+
+| 服务      | 地址                      | 用途              |
+|-----------|--------------------------|-------------------|
+| Broker    | `localhost:9092`         | 客户端连接        |
+| Kafka UI  | <http://localhost:8085>  | 浏览 topic / lag  |
+
+详细说明、踩坑见 `docker/kafka/README.md`。
+
+#### 方式 B：本地裸装（仅了解，不推荐）
+
+```bash
+# Kafka 3.x KRaft 单节点（不再需要 zookeeper）
+KAFKA_CLUSTER_ID="$(bin/kafka-storage.sh random-uuid)"
+bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties
+bin/kafka-server-start.sh config/kraft/server.properties
+```
 
 ### 2.2 基本命令行操作
-- 创建Topic、查看Topic、删除Topic
-- 发送消息、消费消息
 
-#### 案例
 ```bash
-# 启动Zookeeper和Kafka
-bin/zookeeper-server-start.sh config/zookeeper.properties
-bin/kafka-server-start.sh config/server.properties
+# 进入 broker 容器（用了 docker 方案后所有命令前面加这一段）
+docker exec -it kafka-broker bash
+# 之后下面的命令在容器里直接敲
 
-# 创建topic
-bin/kafka-topics.sh --create --topic test --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-(mac) kafka-topics --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic test
+# 创建 topic（3 分区，副本因子 1）
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+  --create --topic test --partitions 3 --replication-factor 1
 
-# 生产消息
-bin/kafka-console-producer.sh --topic test --bootstrap-server localhost:9092
-(mac) kafka-console-producer --topic test --bootstrap-server localhost:9092
+# 查看 topic
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic test
 
-# 消费消息
-bin/kafka-console-consumer.sh --topic test --from-beginning --bootstrap-server localhost:9092
-(mac) kafka-console-consumer --topic test --from-beginning --bootstrap-server localhost:9092
+# 控制台 Producer（每行一条）
+/opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic test
+
+# 控制台 Consumer（从头开始）
+/opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+  --topic test --from-beginning
+
+# 删除 topic
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic test
 ```
 
 **练习**
-- 创建一个名为 `student` 的topic，发送并消费10条消息。
+- 用 Docker 启动 Kafka，建 `student` topic，发送 10 条消息再消费。
+- 在 Kafka UI（<http://localhost:8085>）里观察 topic、partition、consumer group。
+- 把 `KafkaProducerDemo` 改成发送 1000 条，观察 UI 中 LAG 的变化。
 
 ---
 
