@@ -15,6 +15,10 @@
         <spark.version>3.5.1</spark.version>
         <flink.version>1.18.1</flink.version>
         <scala.binary.version>2.12</scala.binary.version>
+        <scala.version>2.12.18</scala.version>
+        <jackson.version>2.14.1</jackson.version>
+        <jersey.version>2.40</jersey.version>
+        <jakarta.servlet.version>4.0.3</jakarta.servlet.version>
     </properties>
     <dependencies>
         <dependency>
@@ -25,6 +29,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_${scala.binary.version}</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -175,6 +184,48 @@
     </dependencies>
     <dependencyManagement>
         <dependencies>
+            <!-- Spark 3.5.x embeds a javax.servlet-based Jetty UI. Spring Boot 3's
+                 managed Jersey 3 / Servlet 6 artifacts use jakarta.servlet and break it. -->
+            <dependency>
+                <groupId>jakarta.servlet</groupId>
+                <artifactId>jakarta.servlet-api</artifactId>
+                <version>${jakarta.servlet.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.core</groupId>
+                <artifactId>jersey-client</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.core</groupId>
+                <artifactId>jersey-common</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.core</groupId>
+                <artifactId>jersey-server</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.containers</groupId>
+                <artifactId>jersey-container-servlet</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.containers</groupId>
+                <artifactId>jersey-container-servlet-core</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jersey.inject</groupId>
+                <artifactId>jersey-hk2</artifactId>
+                <version>${jersey.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-library</artifactId>
+                <version>${scala.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -204,7 +255,7 @@
                     <!-- JDK 17+ 关闭 SecurityManager，但 Hadoop UGI 仍会调用 Subject.getSubject。
                          这里显式允许，否则 HBase 客户端连接抛 UnsupportedOperationException。 -->
                     <!-- jdk.net.hosts.file 让 JVM 用项目内的 hosts 文件，避免改系统 /etc/hosts -->
-                    <argLine>-Djava.security.manager=allow -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local</argLine>
+                    <argLine>-Djava.security.manager=allow -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -215,11 +266,12 @@
                     <mainClass>com.example.demo.DemoApplication</mainClass>
                     <!-- mvn spring-boot:run 时也自动带上：
                          1. hosts 映射 + SecurityManager 开关：用于 HBase
-                         2. JDK17 上 Spark 需要打开的反射通道：sun.nio.ch / java.lang / java.util.concurrent
+                         2. JDK17 上 Spark 需要打开/导出的 JDK 内部通道：sun.nio.ch / java.lang / java.util.concurrent
                             否则会抛 IllegalAccessError: cannot access class sun.nio.ch.DirectBuffer -->
                     <jvmArguments>
                         -Djava.security.manager=allow
                         -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local
+                        --add-exports=java.base/sun.nio.ch=ALL-UNNAMED
                         --add-opens=java.base/java.lang=ALL-UNNAMED
                         --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
                         --add-opens=java.base/java.lang.reflect=ALL-UNNAMED

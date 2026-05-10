@@ -52,8 +52,19 @@ docker compose -f docker/flink/docker-compose.yml up -d
 
 ### 2) 启动 Spring Boot 主程序
 
+推荐用 Maven 启动，项目会自动带上 Spark 在 JDK 17+ 下需要的 JVM 参数：
+
 ```bash
 mvn spring-boot:run
+```
+
+如果用 IntelliJ IDEA，不要直接点默认的 `DemoApplication` 运行配置；请选择项目里的
+`BigdataToolsApplication` 运行配置。这个配置已经带好 `--add-exports` / `--add-opens`。
+否则 Spark 初始化时会报：
+
+```text
+cannot access class sun.nio.ch.DirectBuffer
+because module java.base does not export sun.nio.ch
 ```
 
 打开 <http://localhost:8090>，选感兴趣的模块进入即可。
@@ -112,7 +123,7 @@ bigdata-tools/
 
 ## 五、常见环境
 
-- JDK 17（Java 17 跑 Spark 已经在 `pom.xml` 中加好了 `--add-opens` JVM 参数）
+- JDK 17（Java 17+ 跑 Spark 已经在 `pom.xml` 和 IDEA 运行配置中加好了 JVM 参数）
 - Maven 3.6+
 - Docker Desktop（Apple Silicon 直接用，多数镜像支持 arm64 原生）
 
