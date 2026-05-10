@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Flink Tumbling Window + Watermark 演示</title>
+    <style>
+        body { background: linear-gradient(120deg, #f1f9f1 60%, #a4d4ae 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 720px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 6px 28px rgba(46,139,87,0.12); padding: 30px 34px;}
+        h2 { color: #2e8b57; text-align: center; letter-spacing: 2px; margin-bottom: 18px;}
+        .users { margin: 16px 0;}
+        .user-btn { display: inline-block; padding: 8px 18px; margin: 0 6px 8px 0; border-radius: 18px; border: 1px solid #a4d4ae; background: #f3fbf3; color: #2e8b57; cursor: pointer;}
+        .user-btn:hover { background: #d6efd9;}
+        .btn { padding: 9px 22px; background: #2e8b57; color: #fff; border: none; border-radius: 22px; font-size: 1rem; cursor: pointer; margin-right: 8px;}
+        .btn:hover { background: #1e6a40;}
+        .status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 8px;}
+        .status.run { background: #d5f5e3; color: #1e8449;}
+        .status.stop { background: #f9e79f; color: #b9770e;}
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; background: #f9fdf9; border-radius: 8px; overflow: hidden;}
+        th, td { padding: 7px 9px; border-bottom: 1px solid #d6efd9; text-align: center; font-size: 14px;}
+        th { background: #c2e6c8; color: #1e6a40;}
+        a.back { color: #2e8b57; text-decoration: none; margin-left: 12px;}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Flink 5 秒滚动窗口 · 用户点击数</h2>
+    <p style="color:#1e6a40;">点击下方按钮模拟用户产生事件，Flink 用 <code>EventTime + Watermark + Tumbling 5s</code> 滚动窗口聚合，每个窗口结束时把结果通过 WebSocket 推回。</p>
+    <button class="btn" id="startBtn">启动 Job</button>
+    <span class="status stop" id="status">未启动</span>
+    <a class="back" href="/">← 返回首页</a>
+
+    <div class="users">
+        <span class="user-btn" data-u="alice">+ alice 点击</span>
+        <span class="user-btn" data-u="bob">+ bob 点击</span>
+        <span class="user-btn" data-u="charlie">+ charlie 点击</span>
+    </div>
+
+    <table>
+        <thead><tr><th>窗口结束时间</th><th>用户</th><th>窗口内点击数</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="3" style="color:#aaa;">等待窗口触发……</td></tr></tbody>
+    </table>
+    <div style="margin-top:24px;color:#5d6d7e;font-size:13px;">
+        提示：Watermark 容忍 1 秒乱序。点几下后等 5 秒以内必定能看到结果（窗口已关闭并触发）。
+    </div>
+</div>
+<script>
+const sock = new SockJS('/ws/flink');
+const stomp = Stomp.over(sock);
+const rows = [];
+stomp.connect({}, () => {
+    stomp.subscribe('/topic/flink-window', m => {
+        const v = JSON.parse(m.body);
+        rows.unshift(v);
+        if (rows.length > 30) rows.pop();
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = rows.map(r =>
+            `<tr><td>${new Date(r.windowEnd).toLocaleTimeString()}</td><td>${r.user}</td><td>${r.count}</td></tr>`
+        ).join('');
+    });
+});
+
+document.getElementById('startBtn').onclick = () => {
+    fetch('/flink/window/start', {method: 'POST'}).then(r => r.text()).then(t => {
+        const el = document.getElementById('status');
+        el.className = 'status run'; el.innerText = '运行中';
+    });
+};
+
+document.querySelectorAll('.user-btn').forEach(b => {
+    b.onclick = () => {
+        fetch('/flink/window/click', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'user=' + encodeURIComponent(b.dataset.u)
+        });
+    };
+});
+</script>
+</body>
+</html>

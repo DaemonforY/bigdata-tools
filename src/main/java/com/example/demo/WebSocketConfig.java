@@ -30,6 +30,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
         registry.addEndpoint("/ws/score").setAllowedOriginPatterns("*").withSockJS();
 
+        // Spark Structured Streaming 实时单词计数
+        registry.addEndpoint("/ws/spark-stream").setAllowedOriginPatterns("*").withSockJS();
+        // Flink 各页面统一一个 endpoint，按 /topic/flink-xxx 区分
+        registry.addEndpoint("/ws/flink").setAllowedOriginPatterns("*").withSockJS();
+
     }
 
     @Override

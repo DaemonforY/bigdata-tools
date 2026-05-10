@@ -1,0 +1,57 @@
+# 单 JobManager + 单 TaskManager 的 Flink Session 集群（教学演示用）
+# 仅用于教学演示，请勿在生产环境使用
+#
+# 启动:        docker compose -f docker/flink/docker-compose.yml up -d
+# Web UI:      http://localhost:8082
+# 提交任务:    docker cp target/demo-xxx.jar flink-jobmanager:/opt/job.jar
+#              docker exec flink-jobmanager flink run /opt/job.jar
+# SQL Client:  docker exec -it flink-jobmanager ./bin/sql-client.sh
+# 停止:        docker compose -f docker/flink/docker-compose.yml down
+#
+# 镜像 flink:1.18-scala_2.12-java17 支持 arm64 / amd64 双架构，Apple Silicon 原生运行。
+
+services:
+  flink-jobmanager:
+    image: flink:1.18-scala_2.12-java17
+    container_name: flink-jobmanager
+    hostname: flink-jobmanager
+    command: jobmanager
+    ports:
+      # Web UI（避开 8080，避免和 Kafka UI/HBase REST 冲突）
+      - "8082:8081"
+      # 给宿主机或其他容器提交 job 用
+      - "6123:6123"
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.bind-host: 0.0.0.0
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 2
+        rest.address: flink-jobmanager
+        rest.bind-address: 0.0.0.0
+    volumes:
+      - flink-checkpoints:/tmp/flink-checkpoints
+      - ./jobs:/opt/jobs
+    restart: unless-stopped
+
+  flink-taskmanager:
+    image: flink:1.18-scala_2.12-java17
+    container_name: flink-taskmanager
+    hostname: flink-taskmanager
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.bind-host: 0.0.0.0
+        taskmanager.host: flink-taskmanager
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 2
+    volumes:
+      - flink-checkpoints:/tmp/flink-checkpoints
+      - ./jobs:/opt/jobs
+    restart: unless-stopped
+
+volumes:
+  flink-checkpoints:

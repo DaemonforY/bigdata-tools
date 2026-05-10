@@ -12,6 +12,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>3.0.2</spring-boot.version>
+        <spark.version>3.5.1</spark.version>
+        <flink.version>1.18.1</flink.version>
+        <scala.binary.version>2.12</scala.binary.version>
     </properties>
     <dependencies>
         <dependency>
@@ -110,6 +113,65 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- ============== Spark（教学用，本地 local[*] 模式跑） ============== -->
+        <!-- 排除 spark 自带的 jackson / log4j / netty，与 Spring Boot 冲突 -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <exclusions>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-reload4j</artifactId></exclusion>
+                <exclusion><groupId>log4j</groupId><artifactId>log4j</artifactId></exclusion>
+                <exclusion><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-slf4j2-impl</artifactId></exclusion>
+                <exclusion><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId></exclusion>
+                <exclusion><groupId>com.fasterxml.jackson.module</groupId><artifactId>jackson-module-scala_2.12</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <exclusions>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
+                <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-reload4j</artifactId></exclusion>
+                <exclusion><groupId>log4j</groupId><artifactId>log4j</artifactId></exclusion>
+                <exclusion><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-slf4j2-impl</artifactId></exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql-kafka-0-10_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+        </dependency>
+
+        <!-- ============== Flink（教学用，本地 MiniCluster 跑） ============== -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-base</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-kafka</artifactId>
+            <version>3.1.0-1.18</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-cep</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -151,9 +213,27 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.example.demo.DemoApplication</mainClass>
-                    <!-- mvn spring-boot:run 时也自动带上 hosts 映射和 SecurityManager 开关，
-                         否则连接 HBase 会抛 UnknownHostException: hbase-docker -->
-                    <jvmArguments>-Djava.security.manager=allow -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local</jvmArguments>
+                    <!-- mvn spring-boot:run 时也自动带上：
+                         1. hosts 映射 + SecurityManager 开关：用于 HBase
+                         2. JDK17 上 Spark 需要打开的反射通道：sun.nio.ch / java.lang / java.util.concurrent
+                            否则会抛 IllegalAccessError: cannot access class sun.nio.ch.DirectBuffer -->
+                    <jvmArguments>
+                        -Djava.security.manager=allow
+                        -Djdk.net.hosts.file=${project.basedir}/docker/hbase/hosts.local
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+                        --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED
+                        --add-opens=java.base/java.net=ALL-UNNAMED
+                        --add-opens=java.base/java.nio=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-opens=java.base/sun.nio.cs=ALL-UNNAMED
+                        --add-opens=java.base/sun.security.action=ALL-UNNAMED
+                        --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+                    </jvmArguments>
                 </configuration>
                 <executions>
                     <execution>

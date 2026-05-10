@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Spark Structured Streaming 实时单词计数</title>
+    <style>
+        body { background: linear-gradient(120deg, #fff5f5 60%, #ffd1dc 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 6px 28px rgba(192,57,43,0.10); padding: 30px 34px;}
+        h2 { color: #c0392b; text-align: center; letter-spacing: 2px; margin-bottom: 18px;}
+        .ctrl { background: #fff7f7; padding: 14px 16px; border-radius: 10px; margin-bottom: 16px;}
+        input, textarea { padding: 8px 10px; border: 1px solid #f5b7b1; border-radius: 8px; font-size: 14px;}
+        textarea { width: 100%; min-height: 60px; box-sizing: border-box;}
+        .btn { padding: 9px 22px; background: #c0392b; color: #fff; border: none; border-radius: 22px; font-size: 1rem; cursor: pointer; margin-right: 8px; margin-top: 8px;}
+        .btn.ghost { background: #fff; color: #c0392b; border: 1px solid #f5b7b1;}
+        .btn:disabled { opacity: 0.55; cursor: not-allowed;}
+        .status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 8px;}
+        .status.run { background: #d5f5e3; color: #1e8449;}
+        .status.stop { background: #f9e79f; color: #b9770e;}
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fffafa; border-radius: 8px; overflow: hidden;}
+        th, td { padding: 7px 9px; border-bottom: 1px solid #f3d3d0; text-align: center; font-size: 14px;}
+        th { background: #f9bfbb; color: #6b1e1e;}
+        a.back { color: #c0392b; text-decoration: none;}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Spark Structured Streaming 演示</h2>
+    <p style="color:#7b241c;">流程：浏览器 → Spring Boot 把句子写到 Kafka topic <code>spark-input</code> → Spark Structured Streaming 用 <code>foreachBatch</code> 聚合 → WebSocket 推回页面。
+        <br/>启动前先确保 Kafka 跑起来（<code>docker compose -f docker/kafka/docker-compose.yml up -d</code>）。</p>
+    <div class="ctrl">
+        <button class="btn" id="startBtn">启动 Streaming</button>
+        <button class="btn ghost" id="stopBtn">停止</button>
+        <span class="status stop" id="status">未启动</span>
+    </div>
+    <div class="ctrl">
+        <label>发送句子到 Kafka：</label>
+        <textarea id="text" placeholder="kafka spark flink hello world"></textarea>
+        <button class="btn" id="sendBtn">发送</button>
+        <a class="back" href="/" style="margin-left:12px;">← 返回首页</a>
+    </div>
+    <table id="totals">
+        <thead><tr><th>单词</th><th>累计计数</th></tr></thead>
+        <tbody id="tbody"><tr><td colspan="2" style="color:#aaa;">还没有数据……</td></tr></tbody>
+    </table>
+</div>
+
+<script>
+function setStatus(running) {
+    const el = document.getElementById('status');
+    if (running) { el.className = 'status run'; el.innerText = '运行中'; }
+    else { el.className = 'status stop'; el.innerText = '未启动'; }
+}
+
+function render(map) {
+    const tbody = document.getElementById('tbody');
+    const entries = Object.entries(map).sort((a,b) => b[1]-a[1]);
+    if (entries.length === 0) { tbody.innerHTML = '<tr><td colspan="2" style="color:#aaa;">还没有数据……</td></tr>'; return; }
+    tbody.innerHTML = entries.map(([w,c]) => `<tr><td>${w}</td><td>${c}</td></tr>`).join('');
+}
+
+// 首屏拉一次
+fetch('/spark/streaming/totals').then(r => r.json()).then(render);
+
+// WebSocket
+const sock = new SockJS('/ws/spark-stream');
+const stomp = Stomp.over(sock);
+stomp.connect({}, () => {
+    stomp.subscribe('/topic/spark-stream', m => render(JSON.parse(m.body)));
+});
+
+document.getElementById('startBtn').onclick = () => {
+    fetch('/spark/streaming/start', {method: 'POST'}).then(r => r.text()).then(t => {
+        if (t.indexOf('started') >= 0 || t.indexOf('already') >= 0) setStatus(true);
+        alert(t);
+    });
+};
+document.getElementById('stopBtn').onclick = () => {
+    fetch('/spark/streaming/stop', {method: 'POST'}).then(r => r.text()).then(t => {
+        setStatus(false);
+        alert(t);
+    });
+};
+document.getElementById('sendBtn').onclick = () => {
+    const text = document.getElementById('text').value;
+    if (!text.trim()) return;
+    fetch('/spark/streaming/produce', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'text=' + encodeURIComponent(text)
+    });
+};
+</script>
+</body>
+</html>

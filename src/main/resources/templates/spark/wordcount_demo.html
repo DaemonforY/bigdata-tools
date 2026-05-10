@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Spark RDD WordCount 演示</title>
+    <style>
+        body { background: linear-gradient(120deg, #fdf6ec 60%, #f1c47a 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 720px; margin: 50px auto; background: #fff; border-radius: 16px; box-shadow: 0 6px 28px rgba(160,108,18,0.12); padding: 32px 36px;}
+        h2 { color: #d35400; text-align: center; letter-spacing: 2px; margin-bottom: 22px;}
+        textarea { width: 100%; min-height: 120px; padding: 10px; border: 1px solid #e0c084; border-radius: 8px; font-size: 14px; box-sizing: border-box;}
+        .btn { padding: 10px 26px; background: #e67e22; color: #fff; border: none; border-radius: 22px; font-size: 1.05rem; cursor: pointer; margin-right: 10px;}
+        .btn:hover { background: #d35400; }
+        .meta { background: #fff7e6; padding: 10px 16px; border-radius: 8px; margin-top: 16px; color: #8a4500; font-size: 14px;}
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; background: #fffbf2; border-radius: 8px; overflow: hidden;}
+        th, td { padding: 8px 10px; border-bottom: 1px solid #f3e2c1; text-align: center;}
+        th { background: #f5d28a; color: #6b3700;}
+        .footer { margin-top: 28px; color: #b8860b; font-size: 0.92rem; text-align: center;}
+        a.back { color: #d35400; text-decoration: none; margin-left: 12px;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Spark RDD WordCount 演示</h2>
+    <p style="color:#6b3700;">在文本框输入若干行英文，点击「跑一下」，Spark 会用 <code>flatMap → mapToPair → reduceByKey</code> 在 Driver 进程内 (local[*]) 完成计算并把结果拉回展示。</p>
+    <textarea id="text">hello spark
+hello flink
+hello kafka and spark
+spark is fast and unified</textarea>
+    <div style="margin-top:14px;">
+        <button class="btn" id="runBtn">跑一下</button>
+        <a class="back" href="/">← 返回首页</a>
+    </div>
+    <div class="meta" id="meta" style="display:none;"></div>
+    <table id="resultTable" style="display:none;">
+        <thead><tr><th>单词</th><th>计数</th></tr></thead>
+        <tbody id="tbody"></tbody>
+    </table>
+    <div class="footer">Powered by Miaoyongbin · Spark 3.5 local[*]</div>
+</div>
+
+<script>
+document.getElementById('runBtn').onclick = function() {
+    const text = document.getElementById('text').value;
+    fetch('/spark/wordcount/run', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'text=' + encodeURIComponent(text)
+    }).then(r => r.json()).then(data => {
+        document.getElementById('meta').style.display = 'block';
+        document.getElementById('meta').innerText =
+            `用时 ${data.elapsedMs} ms · 唯一单词 ${data.uniqueWords} 个`;
+        const tbody = document.getElementById('tbody');
+        tbody.innerHTML = '';
+        Object.entries(data.counts)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([w, c]) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${w}</td><td>${c}</td>`;
+                tbody.appendChild(tr);
+            });
+        document.getElementById('resultTable').style.display = 'table';
+    });
+};
+</script>
+</body>
+</html>

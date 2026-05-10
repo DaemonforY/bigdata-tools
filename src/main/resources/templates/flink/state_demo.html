@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Flink Keyed State + Timer 演示</title>
+    <style>
+        body { background: linear-gradient(120deg, #f7f4fb 60%, #c8b8e8 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 720px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 6px 28px rgba(110,75,180,0.13); padding: 30px 34px;}
+        h2 { color: #6e4bb4; text-align: center; letter-spacing: 2px; margin-bottom: 18px;}
+        .user-btn { display: inline-block; padding: 8px 18px; margin: 0 6px 8px 0; border-radius: 18px; border: 1px solid #c8b8e8; background: #faf7fd; color: #6e4bb4; cursor: pointer;}
+        .user-btn:hover { background: #ece4f7;}
+        .btn { padding: 9px 22px; background: #6e4bb4; color: #fff; border: none; border-radius: 22px; font-size: 1rem; cursor: pointer; margin-right: 8px;}
+        .btn:hover { background: #543692;}
+        .status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 8px;}
+        .status.run { background: #d5f5e3; color: #1e8449;}
+        .status.stop { background: #f9e79f; color: #b9770e;}
+        ul.log { list-style: none; padding: 0; max-height: 300px; overflow: auto; margin-top: 14px;}
+        ul.log li { padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; font-size: 13px;}
+        ul.log li.active { background: #ece4f7; color: #543692;}
+        ul.log li.timeout { background: #fbe4e4; color: #a93226; font-weight: 600;}
+        a.back { color: #6e4bb4; text-decoration: none; margin-left: 12px;}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Flink 会话超时检测 · KeyedProcessFunction + Timer</h2>
+    <p style="color:#543692;">每个用户最近一次点击会被存到 ValueState；如果 10 秒内不再点击，定时器触发后会输出 TIMEOUT 告警。</p>
+    <button class="btn" id="startBtn">启动 Job</button>
+    <span class="status stop" id="status">未启动</span>
+    <a class="back" href="/">← 返回首页</a>
+
+    <div style="margin-top:14px;">
+        <span class="user-btn" data-u="alice">alice 点一下</span>
+        <span class="user-btn" data-u="bob">bob 点一下</span>
+        <span class="user-btn" data-u="charlie">charlie 点一下</span>
+    </div>
+    <ul class="log" id="log"></ul>
+</div>
+<script>
+const sock = new SockJS('/ws/flink');
+const stomp = Stomp.over(sock);
+stomp.connect({}, () => {
+    stomp.subscribe('/topic/flink-state', m => {
+        const v = JSON.parse(m.body);
+        const li = document.createElement('li');
+        li.className = v.type === 'TIMEOUT' ? 'timeout' : 'active';
+        if (v.type === 'TIMEOUT') {
+            li.innerText = `[TIMEOUT] ${v.user} 已 ${v.idleMs} ms 没动了`;
+        } else {
+            li.innerText = `[ACTIVE] ${v.user} 在 ${new Date(v.ts).toLocaleTimeString()} 点击`;
+        }
+        const log = document.getElementById('log');
+        log.insertBefore(li, log.firstChild);
+        while (log.children.length > 40) log.removeChild(log.lastChild);
+    });
+});
+
+document.getElementById('startBtn').onclick = () => {
+    fetch('/flink/state/start', {method: 'POST'}).then(() => {
+        const el = document.getElementById('status');
+        el.className = 'status run'; el.innerText = '运行中';
+    });
+};
+document.querySelectorAll('.user-btn').forEach(b => {
+    b.onclick = () => {
+        fetch('/flink/state/click', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'user=' + encodeURIComponent(b.dataset.u)
+        });
+    };
+});
+</script>
+</body>
+</html>

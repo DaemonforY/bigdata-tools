@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Flink CEP 连续登录失败检测</title>
+    <style>
+        body { background: linear-gradient(120deg, #fff5f0 60%, #ffc1a4 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 720px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 6px 28px rgba(204,85,0,0.10); padding: 30px 34px;}
+        h2 { color: #c0392b; text-align: center; letter-spacing: 2px; margin-bottom: 18px;}
+        .ctrl { background: #fff7f3; padding: 14px 16px; border-radius: 10px;}
+        .btn { padding: 9px 22px; background: #c0392b; color: #fff; border: none; border-radius: 22px; font-size: 1rem; cursor: pointer; margin-right: 8px;}
+        .btn.ok { background: #2e8b57;}
+        .btn.fail { background: #c0392b;}
+        .status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 8px;}
+        .status.run { background: #d5f5e3; color: #1e8449;}
+        .status.stop { background: #f9e79f; color: #b9770e;}
+        select, input { padding: 8px 10px; border: 1px solid #ffc1a4; border-radius: 8px;}
+        ul.alerts { list-style: none; padding: 0; margin-top: 14px;}
+        ul.alerts li { padding: 9px 12px; background: #f9d8c4; border-left: 4px solid #c0392b; border-radius: 4px; margin-bottom: 6px; color: #6b1e1e;}
+        a.back { color: #c0392b; text-decoration: none; margin-left: 12px;}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>Flink CEP · 30 秒内连续 3 次登录失败 → 风控告警</h2>
+    <p style="color:#7b241c;">CEP Pattern：<code>begin(FAIL).next(FAIL).next(FAIL).within(30s)</code>。底层是 NFA，能精确匹配复杂事件序列。</p>
+    <button class="btn" id="startBtn">启动 Job</button>
+    <span class="status stop" id="status">未启动</span>
+    <a class="back" href="/">← 返回首页</a>
+
+    <div class="ctrl" style="margin-top:14px;">
+        <label>用户：</label>
+        <select id="user">
+            <option>alice</option><option>bob</option><option>charlie</option>
+        </select>
+        <button class="btn fail" data-r="FAIL">登录失败</button>
+        <button class="btn ok" data-r="SUCCESS">登录成功</button>
+    </div>
+    <ul class="alerts" id="alerts"></ul>
+    <div style="color:#85929e;font-size:13px;margin-top:8px;">
+        小提示：连续 3 次 FAIL（30 秒内）会触发告警；中间穿插 SUCCESS 不会触发，因为 next 要求连续。
+    </div>
+</div>
+<script>
+const sock = new SockJS('/ws/flink');
+const stomp = Stomp.over(sock);
+stomp.connect({}, () => {
+    stomp.subscribe('/topic/flink-cep', m => {
+        const v = JSON.parse(m.body);
+        const li = document.createElement('li');
+        li.innerText = `[${v.alert}] 用户=${v.user} 跨度=${v.spanMs}ms（首次失败 ${new Date(v.firstTs).toLocaleTimeString()} → 第三次 ${new Date(v.thirdTs).toLocaleTimeString()}）`;
+        const ul = document.getElementById('alerts');
+        ul.insertBefore(li, ul.firstChild);
+    });
+});
+
+document.getElementById('startBtn').onclick = () => {
+    fetch('/flink/cep/start', {method: 'POST'}).then(() => {
+        const el = document.getElementById('status');
+        el.className = 'status run'; el.innerText = '运行中';
+    });
+};
+document.querySelectorAll('.btn[data-r]').forEach(b => {
+    b.onclick = () => {
+        const u = document.getElementById('user').value;
+        const r = b.dataset.r;
+        fetch('/flink/cep/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'user=' + encodeURIComponent(u) + '&result=' + r
+        });
+    };
+});
+</script>
+</body>
+</html>

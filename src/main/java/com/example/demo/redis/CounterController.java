@@ -28,4 +28,3 @@ public class CounterController {
         return "redis/counter";
     }
 }
-

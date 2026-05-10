@@ -30,6 +30,13 @@ echo "==> 创建 input-topic / output-topic (Streams WordCount 用)"
 create_topic input-topic 1
 create_topic output-topic 1
 
+echo "==> 创建 spark-input (Spark Structured Streaming 用)"
+create_topic spark-input 1
+
+echo "==> 创建 flink-input / flink-events (Flink demo 用)"
+create_topic flink-input 1
+create_topic flink-events 3
+
 echo
 echo "==> 当前 topic 列表："
 docker exec kafka-broker $KAFKA_BIN/kafka-topics.sh \

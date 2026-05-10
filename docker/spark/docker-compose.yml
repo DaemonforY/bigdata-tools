@@ -1,0 +1,73 @@
+# 单 Master + 单 Worker 的 Spark Standalone 集群（教学演示用）
+# 仅用于教学演示，请勿在生产环境使用
+#
+# 启动:        docker compose -f docker/spark/docker-compose.yml up -d
+# Spark UI:    http://localhost:8088   （Master）
+#              http://localhost:8081   （Worker）
+# 提交任务:    docker exec spark-master /opt/spark/bin/spark-submit \
+#                --master spark://spark-master:7077 ...
+# 进 PySpark:  docker exec -it spark-master /opt/spark/bin/pyspark
+# 进 spark-shell: docker exec -it spark-master /opt/spark/bin/spark-shell
+# 停止:        docker compose -f docker/spark/docker-compose.yml down
+#
+# 镜像 apache/spark:3.5.1 支持 arm64 / amd64 双架构，Apple Silicon 原生运行。
+# （之前用 bitnami/spark:3.5，由于 Bitnami 把旧版浮动 tag 从 Docker Hub 撤下，已切换到
+#  Apache 官方镜像。两者的 Standalone 语义一致，只是启动命令不同。）
+
+x-spark-common: &spark-common
+  image: apache/spark:3.5.1
+  user: root
+  volumes:
+    - ./jobs:/opt/jobs
+  restart: unless-stopped
+
+services:
+  spark-master:
+    <<: *spark-common
+    container_name: spark-master
+    hostname: spark-master
+    # 官方镜像没有 bitnami 那种 SPARK_MODE 简化变量，直接用 spark-class 启动 master
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.master.Master
+      --host spark-master
+      --port 7077
+      --webui-port 8088
+    ports:
+      # Master RPC：Java/Scala 客户端通过 spark://localhost:7077 提交任务
+      - "7077:7077"
+      # Master Web UI（避开 8080）
+      - "8088:8088"
+      # Driver 在容器外运行时的 BlockManager 端口（可选）
+      - "4040:4040"
+
+  spark-worker:
+    <<: *spark-common
+    container_name: spark-worker
+    hostname: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_WORKER_MEMORY: 2G
+      SPARK_WORKER_CORES: 2
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      --webui-port 8081
+      spark://spark-master:7077
+    ports:
+      # Worker Web UI
+      - "8081:8081"
+
+  # 可选：Jupyter（pyspark）一键起来给学生上手 DataFrame
+  # 想要时把下面注释打开即可
+  # jupyter:
+  #   image: jupyter/pyspark-notebook:spark-3.5.0
+  #   container_name: spark-jupyter
+  #   ports:
+  #     - "8888:8888"
+  #   environment:
+  #     JUPYTER_TOKEN: "spark"
+  #   volumes:
+  #     - ./notebooks:/home/jovyan/work
+  #   restart: unless-stopped

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Spark SQL 学生成绩分析</title>
+    <style>
+        body { background: linear-gradient(120deg, #f0f7ff 60%, #b9d6f2 100%); font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        .container { max-width: 880px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 6px 28px rgba(20,80,160,0.12); padding: 30px 34px;}
+        h2 { color: #1c5fa6; text-align: center; letter-spacing: 2px; margin-bottom: 18px;}
+        textarea { width: 100%; min-height: 110px; padding: 10px; border: 1px solid #b6cce6; border-radius: 8px; font-family: Consolas, Monaco, monospace; font-size: 14px; box-sizing: border-box;}
+        .btn { padding: 9px 24px; background: #1c5fa6; color: #fff; border: none; border-radius: 22px; font-size: 1rem; cursor: pointer; margin-right: 8px;}
+        .btn.ghost { background: #fff; color: #1c5fa6; border: 1px solid #b6cce6;}
+        .btn:hover { filter: brightness(0.95);}
+        .meta { background: #eaf3ff; padding: 9px 14px; border-radius: 8px; margin-top: 14px; color: #1c5fa6; font-size: 13px;}
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #f8fbff; border-radius: 8px; overflow: hidden;}
+        th, td { padding: 7px 9px; border-bottom: 1px solid #dde6f1; text-align: center; font-size: 14px;}
+        th { background: #cfe1f5; color: #134d8a;}
+        pre.plan { margin-top: 10px; padding: 10px; background: #1f2933; color: #cae5ff; border-radius: 8px; font-size: 12px; max-height: 200px; overflow: auto; white-space: pre-wrap;}
+        .preset { display: inline-block; margin: 4px 8px 4px 0; padding: 4px 10px; border: 1px dashed #b6cce6; border-radius: 14px; cursor: pointer; font-size: 12px; color: #1c5fa6;}
+        .preset:hover { background: #eaf3ff;}
+        .err { color: #c0392b; font-weight: 600;}
+        a.back { color: #1c5fa6; text-decoration: none; margin-left: 12px;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Spark SQL · 学生成绩多维分析</h2>
+    <p style="color:#3d5a80;">数据已注册成临时视图 <code>student_score(student, clazz, subject, score)</code>。试试下方任一预设 SQL，或直接输入：</p>
+    <div>
+        <span class="preset" data-sql="SELECT * FROM student_score">看全表</span>
+        <span class="preset" data-sql="SELECT student, AVG(score) AS avg_score FROM student_score GROUP BY student ORDER BY avg_score DESC">每位学生平均分</span>
+        <span class="preset" data-sql="SELECT clazz, subject, AVG(score) AS avg_score FROM student_score GROUP BY clazz, subject ORDER BY clazz, subject">班级×科目均分</span>
+        <span class="preset" data-sql="SELECT student, subject, score, RANK() OVER (PARTITION BY subject ORDER BY score DESC) AS rk FROM student_score">每科排名（窗口函数）</span>
+        <span class="preset" data-sql="SELECT student, MAX(CASE WHEN subject='数学' THEN score END) AS math, MAX(CASE WHEN subject='语文' THEN score END) AS chinese, MAX(CASE WHEN subject='英语' THEN score END) AS english FROM student_score GROUP BY student">行转列（三科分列）</span>
+    </div>
+    <textarea id="sql">SELECT student, AVG(score) AS avg_score FROM student_score GROUP BY student ORDER BY avg_score DESC</textarea>
+    <div style="margin-top:12px;">
+        <button class="btn" id="runBtn">执行 SQL</button>
+        <button class="btn ghost" id="previewBtn">预览原表</button>
+        <a class="back" href="/">← 返回首页</a>
+    </div>
+    <div class="meta" id="meta" style="display:none;"></div>
+    <table id="resultTable" style="display:none;"></table>
+    <pre class="plan" id="plan" style="display:none;"></pre>
+    <div style="margin-top:24px;color:#85929e;font-size:12px;">
+        提示：每条 SQL 执行后会显示 Catalyst 优化后的物理计划，看一下 <code>HashAggregate / SortMergeJoin / Exchange</code> 这些算子。
+    </div>
+</div>
+
+<script>
+function renderRows(schema, rows) {
+    const tbl = document.getElementById('resultTable');
+    let html = '<thead><tr>' + schema.map(f => `<th>${f}</th>`).join('') + '</tr></thead><tbody>';
+    rows.forEach(r => {
+        html += '<tr>' + schema.map(f => `<td>${r[f] === null ? '' : r[f]}</td>`).join('') + '</tr>';
+    });
+    html += '</tbody>';
+    tbl.innerHTML = html;
+    tbl.style.display = 'table';
+}
+
+document.querySelectorAll('.preset').forEach(el => {
+    el.onclick = () => { document.getElementById('sql').value = el.dataset.sql; };
+});
+
+document.getElementById('runBtn').onclick = function() {
+    const sql = document.getElementById('sql').value;
+    fetch('/spark/sql/query', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'sql=' + encodeURIComponent(sql)
+    }).then(r => r.json()).then(data => {
+        const meta = document.getElementById('meta');
+        meta.style.display = 'block';
+        if (data.error) {
+            meta.innerHTML = '<span class="err">SQL 错误：' + data.error + '</span>';
+            document.getElementById('resultTable').style.display = 'none';
+            document.getElementById('plan').style.display = 'none';
+            return;
+        }
+        meta.innerText = `用时 ${data.elapsedMs} ms · 返回 ${data.rows.length} 行`;
+        renderRows(data.schema, data.rows);
+        document.getElementById('plan').innerText = data.plan;
+        document.getElementById('plan').style.display = 'block';
+    });
+};
+
+document.getElementById('previewBtn').onclick = function() {
+    fetch('/spark/sql/preview').then(r => r.json()).then(rows => {
+        if (rows.length === 0) return;
+        renderRows(Object.keys(rows[0]), rows);
+        document.getElementById('meta').style.display = 'block';
+        document.getElementById('meta').innerText = `预览 ${rows.length} 行`;
+        document.getElementById('plan').style.display = 'none';
+    });
+};
+</script>
+</body>
+</html>
