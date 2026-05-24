@@ -34,10 +34,11 @@ public class LotteryController {
         return "redirect:/redis/lottery";
     }
 
-    @PostMapping("/lottery/draw")
+    @PostMapping("/redis/lottery/draw")
     public String draw(Model model) {
         String winner = redisTemplate.opsForSet().randomMember("lottery");
         model.addAttribute("winner", winner);
+        model.addAttribute("members", redisTemplate.opsForSet().members("lottery"));
         return "redis/lottery";
     }
 }

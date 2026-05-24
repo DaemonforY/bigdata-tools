@@ -4,4 +4,5 @@
 127.0.0.1 hbase-docker
 127.0.0.1 localhost
 127.0.0.1 bogon
-::1       localhost bogon
+127.0.0.1 Mac.lan
+::1       localhost bogon Mac.lan
