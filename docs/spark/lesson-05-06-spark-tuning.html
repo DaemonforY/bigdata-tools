@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Spark 实战课 · 第5-6课</title>
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080c10;
+  --bg1:      #0e1419;
+  --bg2:      #141c24;
+  --bg3:      #1a2433;
+  --border:   #1e2d3d;
+  --border2:  #243447;
+  --text:     #c9d6e3;
+  --muted:    #546e7a;
+  --dim:      #2e3f50;
+  --accent:   #00d4ff;
+  --accent2:  #ff6b35;
+  --green:    #39d98a;
+  --yellow:   #ffc107;
+  --red:      #ff4757;
+  --purple:   #bd93f9;
+  --kw:       #ff79c6;
+  --str:      #f1fa8c;
+  --num:      #bd93f9;
+  --fn:       #50fa7b;
+  --cm:       #6272a4;
+  --glow:     0 0 20px rgba(0,212,255,0.15);
+  --glow2:    0 0 30px rgba(255,107,53,0.2);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans SC',sans-serif;
+  display:flex;flex-direction:column;
+}
+
+/* scanline overlay */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);
+}
+
+/* ── TOP BAR ── */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:52px;
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.tb-left{display:flex;align-items:center;gap:16px}
+.tb-logo{
+  font-family:'Azeret Mono',monospace;font-size:13px;font-weight:700;
+  color:var(--accent);letter-spacing:2px;
+  text-shadow:0 0 12px rgba(0,212,255,.5);
+}
+.tb-sep{color:var(--dim);font-size:18px}
+.tb-title{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-text{font-family:'Azeret Mono',monospace;font-size:10px;color:var(--muted)}
+
+/* ── LESSON TABS ── */
+#lesson-tabs{
+  display:flex;gap:0;
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.ltab{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:14px 24px;cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .2s;color:var(--muted);
+  font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.5px;
+}
+.ltab:hover{color:var(--text);background:rgba(255,255,255,.02)}
+.ltab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(0,212,255,.04)}
+.ltab.active2{color:var(--accent2);border-bottom-color:var(--accent2);background:rgba(255,107,53,.04)}
+.ltab-num{
+  font-size:18px;font-weight:700;
+  font-family:'Azeret Mono',monospace;
+}
+.ltab-info{text-align:left}
+.ltab-name{font-size:11px;font-weight:600}
+.ltab-sub{font-size:9px;color:var(--dim);margin-top:1px;letter-spacing:.5px}
+
+/* ── MAIN LAYOUT ── */
+#layout{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--bg1);
+  border-right:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+.sidebar-section{
+  padding:12px 16px 6px;
+  font-family:'Azeret Mono',monospace;font-size:9px;
+  color:var(--dim);letter-spacing:2px;text-transform:uppercase;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 16px;cursor:pointer;
+  border-left:2px solid transparent;
+  transition:all .15s;font-size:12px;color:var(--muted);
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.nav-item.active{
+  color:var(--accent);border-left-color:var(--accent);
+  background:rgba(0,212,255,.06);
+}
+.nav-item.active2{color:var(--accent2);border-left-color:var(--accent2);background:rgba(255,107,53,.06)}
+.nav-icon{font-size:14px;flex-shrink:0}
+.nav-label{flex:1;line-height:1.3}
+.nav-badge{
+  font-family:'Azeret Mono',monospace;font-size:8px;
+  padding:1px 5px;border-radius:2px;
+  background:var(--bg3);color:var(--muted);
+}
+.nav-badge.done{background:rgba(57,217,138,.15);color:var(--green)}
+
+/* ── CONTENT ── */
+#content{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.panel{display:none;flex:1;padding:28px 32px;flex-direction:column;gap:24px}
+.panel.visible{display:flex}
+
+/* section header */
+.sec-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.sec-tag{
+  font-family:'Azeret Mono',monospace;font-size:9px;letter-spacing:2px;
+  padding:3px 8px;border-radius:2px;text-transform:uppercase;
+}
+.tag-blue{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.tag-orange{background:rgba(255,107,53,.12);color:var(--accent2);border:1px solid rgba(255,107,53,.2)}
+.tag-green{background:rgba(57,217,138,.12);color:var(--green);border:1px solid rgba(57,217,138,.2)}
+.tag-yellow{background:rgba(255,193,7,.1);color:var(--yellow);border:1px solid rgba(255,193,7,.2)}
+.sec-title{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--text)}
+.sec-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ── COMPARE BLOCK ── */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.compare-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;
+}
+.compare-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--border);
+}
+.compare-label{font-family:'Azeret Mono',monospace;font-size:10px;letter-spacing:1px}
+.label-blue{color:var(--accent)}
+.label-orange{color:var(--accent2)}
+.compare-badge{
+  font-family:'Azeret Mono',monospace;font-size:9px;
+  padding:2px 7px;border-radius:2px;
+}
+
+/* ── CODE BLOCK ── */
+.code-block{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;
+}
+.code-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:var(--bg2);
+  border-bottom:1px solid var(--border);
+}
+.code-dots span{
+  display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;
+}
+.code-filename{
+  font-family:'Azeret Mono',monospace;font-size:10px;
+  color:var(--muted);margin-left:4px;flex:1;
+}
+.copy-btn{
+  font-family:'Azeret Mono',monospace;font-size:9px;
+  padding:3px 8px;border-radius:2px;cursor:pointer;
+  background:var(--bg3);color:var(--muted);
+  border:1px solid var(--border2);transition:color .15s;
+}
+.copy-btn:hover{color:var(--accent)}
+pre.code{
+  margin:0;padding:16px;overflow-x:auto;
+  font-family:'Azeret Mono',monospace;font-size:12px;line-height:1.8;
+  background:transparent;color:var(--text);
+}
+.kw{color:var(--kw)} .str{color:var(--str)} .num{color:var(--num)}
+.fn{color:var(--fn)} .cm{color:var(--cm)} .var{color:var(--accent)}
+.op{color:var(--accent2)} .sql-kw{color:#ff79c6;font-weight:600}
+.sql-fn{color:#50fa7b} .sql-col{color:#8be9fd} .sql-str{color:#f1fa8c}
+
+/* ── INFO CARDS ── */
+.card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.info-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;padding:16px;
+  transition:border-color .2s;
+}
+.info-card:hover{border-color:var(--border2)}
+.card-icon{font-size:20px;margin-bottom:8px}
+.card-title{
+  font-family:'Space Mono',monospace;font-size:11px;
+  font-weight:700;color:var(--text);margin-bottom:6px;
+}
+.card-body{font-size:12px;color:var(--muted);line-height:1.7}
+.card-highlight{
+  margin-top:8px;padding:8px 10px;
+  background:var(--bg3);border-radius:4px;border-left:2px solid var(--accent);
+  font-family:'Azeret Mono',monospace;font-size:10px;color:var(--accent);
+}
+.card-highlight.orange{border-left-color:var(--accent2);color:var(--accent2)}
+.card-highlight.green{border-left-color:var(--green);color:var(--green)}
+.card-highlight.yellow{border-left-color:var(--yellow);color:var(--yellow)}
+.card-highlight.red{border-left-color:var(--red);color:var(--red)}
+
+/* ── FLOW DIAGRAM ── */
+.flow{display:flex;align-items:center;gap:0;overflow-x:auto;padding:4px 0}
+.flow-node{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;padding:10px 16px;text-align:center;
+  font-family:'Azeret Mono',monospace;font-size:11px;
+  white-space:nowrap;flex-shrink:0;
+}
+.flow-arrow{color:var(--dim);font-size:18px;padding:0 6px;flex-shrink:0}
+.flow-node.accent{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.06)}
+.flow-node.orange{border-color:var(--accent2);color:var(--accent2);background:rgba(255,107,53,.06)}
+.flow-node.green{border-color:var(--green);color:var(--green);background:rgba(57,217,138,.06)}
+.flow-node.red{border-color:var(--red);color:var(--red);background:rgba(255,71,87,.06)}
+.flow-node.yellow{border-color:var(--yellow);color:var(--yellow);background:rgba(255,193,7,.06)}
+
+/* ── SKEW VISUALIZER ── */
+.skew-section{display:flex;flex-direction:column;gap:8px}
+.skew-row{display:flex;align-items:center;gap:10px}
+.skew-label{
+  font-family:'Azeret Mono',monospace;font-size:10px;
+  color:var(--muted);width:70px;flex-shrink:0;
+}
+.skew-bar-wrap{flex:1;height:28px;background:var(--bg3);border-radius:4px;overflow:hidden;position:relative}
+.skew-bar{
+  height:100%;border-radius:4px;display:flex;align-items:center;
+  padding:0 10px;font-family:'Azeret Mono',monospace;font-size:10px;font-weight:700;
+  transition:width 1s cubic-bezier(.4,0,.2,1);
+}
+.skew-time{
+  font-family:'Azeret Mono',monospace;font-size:10px;
+  width:70px;text-align:right;flex-shrink:0;
+}
+
+/* ── PARAM TABLE ── */
+.param-table{width:100%;border-collapse:collapse;font-size:12px}
+.param-table th{
+  text-align:left;padding:8px 12px;
+  font-family:'Azeret Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--border);
+}
+.param-table td{padding:10px 12px;border-bottom:1px solid rgba(30,45,61,.5);vertical-align:top}
+.param-table tr:hover td{background:rgba(255,255,255,.02)}
+.param-name{font-family:'Azeret Mono',monospace;font-size:11px;color:var(--accent)}
+.param-default{font-family:'Azeret Mono',monospace;font-size:10px;color:var(--yellow)}
+.param-desc{font-size:11px;color:var(--muted);line-height:1.6}
+.param-tip{
+  display:inline-block;margin-top:4px;font-size:10px;
+  padding:2px 6px;border-radius:2px;
+  background:rgba(57,217,138,.1);color:var(--green);
+}
+
+/* ── FUNNEL ── */
+.funnel{display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 0}
+.funnel-step{
+  display:flex;align-items:center;gap:0;width:100%;max-width:560px;
+}
+.funnel-bar-outer{flex:1;position:relative;height:44px;display:flex;align-items:center;justify-content:center}
+.funnel-bar{
+  height:100%;display:flex;align-items:center;justify-content:center;
+  border-radius:4px;font-family:'Azeret Mono',monospace;font-size:11px;
+  font-weight:700;transition:width .6s ease;position:absolute;
+}
+.funnel-label{
+  width:130px;text-align:right;padding-right:14px;
+  font-size:11px;color:var(--muted);flex-shrink:0;
+}
+.funnel-count{
+  width:80px;text-align:left;padding-left:14px;
+  font-family:'Azeret Mono',monospace;font-size:11px;
+  flex-shrink:0;
+}
+.funnel-drop{
+  text-align:center;font-family:'Azeret Mono',monospace;
+  font-size:9px;color:var(--red);padding:2px 0;
+}
+.funnel-rate{color:var(--muted)}
+
+/* ── HOMEWORK ── */
+.hw-box{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:6px;overflow:hidden;
+}
+.hw-header{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;background:var(--bg3);
+  border-bottom:1px solid var(--border);
+}
+.hw-num{
+  font-family:'Azeret Mono',monospace;font-size:20px;font-weight:700;
+  color:var(--accent2);line-height:1;
+}
+.hw-title{font-family:'Space Mono',monospace;font-size:12px;font-weight:700}
+.hw-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.hw-body{padding:16px}
+.hw-step{
+  display:flex;gap:12px;margin-bottom:14px;
+}
+.hw-step-num{
+  font-family:'Azeret Mono',monospace;font-size:11px;font-weight:700;
+  color:var(--accent);flex-shrink:0;width:20px;padding-top:1px;
+}
+.hw-step-content{font-size:12px;color:var(--muted);line-height:1.7}
+.hw-step-content strong{color:var(--text)}
+.checklist{list-style:none;display:flex;flex-direction:column;gap:6px}
+.checklist li{
+  display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--muted);
+}
+.checklist li::before{content:'□';color:var(--dim);flex-shrink:0;font-family:'Azeret Mono',monospace}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:4px 0}
+
+/* ── TAB SWITCHER (inner) ── */
+.inner-tabs{display:flex;gap:4px;margin-bottom:16px}
+.itab{
+  padding:6px 14px;font-family:'Azeret Mono',monospace;font-size:10px;
+  letter-spacing:.5px;cursor:pointer;border-radius:4px;
+  border:1px solid var(--border);background:transparent;color:var(--muted);
+  transition:all .15s;
+}
+.itab:hover{color:var(--text);border-color:var(--border2)}
+.itab.active{background:rgba(0,212,255,.08);border-color:var(--accent);color:var(--accent)}
+.itab.active-orange{background:rgba(255,107,53,.08);border-color:var(--accent2);color:var(--accent2)}
+.ipanel{display:none}
+.ipanel.visible{display:block}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── ANIMATION ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.panel.visible{animation:fadeIn .25s ease}
+
+/* ── PROGRESS BAR ── */
+.progress-bar-row{display:flex;align-items:center;gap:10px;margin-top:auto;padding:12px 16px;border-top:1px solid var(--border)}
+.pb-label{font-family:'Azeret Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px}
+.pb-track{flex:1;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.pb-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:2px;transition:width .4s}
+.pb-pct{font-family:'Azeret Mono',monospace;font-size:9px;color:var(--muted)}
+
+/* ── RESPONSIVE NOTE ── */
+@media(max-width:900px){
+  .compare-grid{grid-template-columns:1fr}
+  .card-grid{grid-template-columns:1fr 1fr}
+  #sidebar{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="tb-left">
+    <div class="tb-logo">⚡ SPARK</div>
+    <div class="tb-sep">/</div>
+    <div class="tb-title">COURSE MODULE · L5–L6</div>
+  </div>
+  <div class="tb-right">
+    <div class="status-dot"></div>
+    <span class="status-text">RUNTIME READY</span>
+  </div>
+</div>
+
+<!-- LESSON TABS -->
+<div id="lesson-tabs">
+  <div class="ltab active" data-lesson="5" onclick="switchLesson(5)">
+    <div class="ltab-num" style="color:var(--accent)">05</div>
+    <div class="ltab-info">
+      <div class="ltab-name">Spark SQL 实战</div>
+      <div class="ltab-sub">DATAFRAME · SQL · FUNNEL</div>
+    </div>
+  </div>
+  <div class="ltab" data-lesson="6" onclick="switchLesson(6)">
+    <div class="ltab-num" style="color:var(--accent2)">06</div>
+    <div class="ltab-info">
+      <div class="ltab-name">性能调优</div>
+      <div class="ltab-sub">SKEW · PARAMS · BROADCAST</div>
+    </div>
+  </div>
+</div>
+
+<div id="layout">
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="nav-5">
+    <div class="sidebar-section">第5课 · 导航</div>
+    <div class="nav-item active" data-lesson="5" data-sec="sql-compare" onclick="navTo(5,'sql-compare')">
+      <span class="nav-icon">⚖️</span>
+      <span class="nav-label">两种写法对比</span>
+    </div>
+    <div class="nav-item" data-lesson="5" data-sec="ecommerce" onclick="navTo(5,'ecommerce')">
+      <span class="nav-icon">🛒</span>
+      <span class="nav-label">电商统计重写</span>
+    </div>
+    <div class="nav-item" data-lesson="5" data-sec="funnel" onclick="navTo(5,'funnel')">
+      <span class="nav-icon">📐</span>
+      <span class="nav-label">漏斗分析实现</span>
+    </div>
+    <div class="nav-item" data-lesson="5" data-sec="hw5" onclick="navTo(5,'hw5')">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">作业</span>
+      <span class="nav-badge">HW</span>
+    </div>
+  </div>
+  <div id="nav-6" style="display:none">
+    <div class="sidebar-section">第6课 · 导航</div>
+    <div class="nav-item active2" data-lesson="6" data-sec="skew-theory" onclick="navTo(6,'skew-theory')">
+      <span class="nav-icon">⚠️</span>
+      <span class="nav-label">数据倾斜原理</span>
+    </div>
+    <div class="nav-item" data-lesson="6" data-sec="skew-fix" onclick="navTo(6,'skew-fix')">
+      <span class="nav-icon">🔧</span>
+      <span class="nav-label">加盐 + 广播 Join</span>
+    </div>
+    <div class="nav-item" data-lesson="6" data-sec="params" onclick="navTo(6,'params')">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">常用调优参数</span>
+    </div>
+    <div class="nav-item" data-lesson="6" data-sec="hw6" onclick="navTo(6,'hw6')">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">作业</span>
+      <span class="nav-badge">HW</span>
+    </div>
+  </div>
+
+  <div class="progress-bar-row">
+    <span class="pb-label">PROGRESS</span>
+    <div class="pb-track"><div class="pb-fill" id="pb" style="width:0%"></div></div>
+    <span class="pb-pct" id="pb-pct">0%</span>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+<!-- ═══════════════════ LESSON 5 ═══════════════════ -->
+<div class="panel visible" id="panel-5">
+
+  <!-- § SQL COMPARE -->
+  <div id="sec-sql-compare">
+    <div class="sec-header">
+      <span class="sec-tag tag-blue">§ 01</span>
+      <div>
+        <div class="sec-title">DataFrame API vs Spark SQL</div>
+        <div class="sec-sub">同一逻辑，两种写法——性能完全相同，选择看场景</div>
+      </div>
+    </div>
+
+    <div class="inner-tabs">
+      <button class="itab active" onclick="switchItab(this,'compare-df','compare-group')">DataFrame API</button>
+      <button class="itab" onclick="switchItab(this,'compare-sql','compare-group')">Spark SQL</button>
+    </div>
+
+    <div id="compare-group">
+      <div id="compare-df" class="ipanel visible">
+        <div class="code-block">
+          <div class="code-bar">
+            <div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div>
+            <span class="code-filename">api_style.py</span>
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          </div>
+          <pre class="code"><span class="kw">from</span> pyspark.sql <span class="kw">import</span> SparkSession
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> col, count, sum, avg, round, when
+
+<span class="cm"># ── 电商场景：统计每类商品的 GMV、订单量、转化率 ──</span>
+
+result = orders_df \
+    .filter(col(<span class="str">"status"</span>) != <span class="str">"cancelled"</span>) \
+    .join(products_df, on=<span class="str">"product_id"</span>, how=<span class="str">"left"</span>) \
+    .groupBy(<span class="str">"category"</span>) \
+    .agg(
+        count(<span class="str">"order_id"</span>).alias(<span class="str">"order_cnt"</span>),
+        sum(<span class="str">"amount"</span>).alias(<span class="str">"gmv"</span>),
+        round(avg(<span class="str">"amount"</span>), <span class="num">2</span>).alias(<span class="str">"avg_order"</span>),
+        sum(when(col(<span class="str">"is_paid"</span>) == <span class="num">1</span>, <span class="num">1</span>).otherwise(<span class="num">0</span>)).alias(<span class="str">"paid_cnt"</span>)
+    ) \
+    .withColumn(<span class="str">"pay_rate"</span>,
+        round(col(<span class="str">"paid_cnt"</span>) / col(<span class="str">"order_cnt"</span>) * <span class="num">100</span>, <span class="num">1</span>)) \
+    .orderBy(col(<span class="str">"gmv"</span>).desc())
+
+result.show(<span class="num">20</span>, truncate=<span class="kw">False</span>)</pre>
+        </div>
+      </div>
+
+      <div id="compare-sql" class="ipanel">
+        <div class="code-block">
+          <div class="code-bar">
+            <div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div>
+            <span class="code-filename">sql_style.py</span>
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          </div>
+          <pre class="code"><span class="cm"># 先注册视图</span>
+orders_df.createOrReplaceTempView(<span class="str">"orders"</span>)
+products_df.createOrReplaceTempView(<span class="str">"products"</span>)
+
+<span class="cm"># ── 完全相同的逻辑，SQL 写法 ──</span>
+result = spark.sql(<span class="str">"""
+    SELECT
+        p.category,
+        COUNT(o.order_id)                        AS order_cnt,
+        SUM(o.amount)                            AS gmv,
+        ROUND(AVG(o.amount), 2)                  AS avg_order,
+        SUM(CASE WHEN o.is_paid = 1 THEN 1
+                 ELSE 0 END)                     AS paid_cnt,
+        ROUND(
+            SUM(CASE WHEN o.is_paid = 1 THEN 1
+                     ELSE 0 END)
+            / COUNT(o.order_id) * 100, 1
+        )                                        AS pay_rate
+    FROM orders o
+    LEFT JOIN products p ON o.product_id = p.product_id
+    WHERE o.status != 'cancelled'
+    GROUP BY p.category
+    ORDER BY gmv DESC
+"""</span>)
+
+result.show(<span class="num">20</span>, truncate=<span class="kw">False</span>)</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid" style="margin-top:16px">
+      <div class="info-card">
+        <div class="card-icon">🏗️</div>
+        <div class="card-title">DataFrame API 适合场景</div>
+        <div class="card-body">逻辑复杂、需要动态构建查询条件；团队以 Python 工程师为主；需要在代码里做条件分支组合</div>
+        <div class="card-highlight">df.filter(...).join(...).groupBy(...)</div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">🗄️</div>
+        <div class="card-title">Spark SQL 适合场景</div>
+        <div class="card-body">从 Hive 迁移过来的 SQL；多表 JOIN 逻辑；团队有 SQL 分析师；BI 工具对接</div>
+        <div class="card-highlight">spark.sql("SELECT ... FROM ... WHERE ...")</div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">性能完全相同</div>
+        <div class="card-body">两种写法最终都经过 <strong style="color:var(--accent)">Catalyst 优化器</strong> 转成相同的物理执行计划</div>
+        <div class="card-highlight green">Catalyst → 逻辑计划 → 物理计划 → RDD</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- § ECOMMERCE -->
+  <div id="sec-ecommerce">
+    <div class="sec-header">
+      <span class="sec-tag tag-blue">§ 02</span>
+      <div>
+        <div class="sec-title">用电商数据集重写 Hive 统计逻辑</div>
+        <div class="sec-sub">典型 Hive SQL → Spark SQL 迁移，三个常见查询场景</div>
+      </div>
+    </div>
+
+    <div class="inner-tabs">
+      <button class="itab active" onclick="switchItab(this,'ec-gmv','ec-group')">GMV 统计</button>
+      <button class="itab" onclick="switchItab(this,'ec-retention','ec-group')">复购率</button>
+      <button class="itab" onclick="switchItab(this,'ec-window','ec-group')">销售排名</button>
+    </div>
+
+    <div id="ec-group">
+      <div id="ec-gmv" class="ipanel visible">
+        <div class="compare-grid">
+          <div class="compare-card">
+            <div class="compare-header">
+              <span class="compare-label label-orange">HIVE SQL（原版）</span>
+              <span class="compare-badge" style="background:rgba(255,107,53,.1);color:var(--accent2)">慢·T+1</span>
+            </div>
+            <pre class="code" style="padding:14px;font-size:11px"><span class="sql-kw">SELECT</span>
+    DATE_FORMAT(create_time, <span class="sql-str">'yyyy-MM'</span>) <span class="sql-kw">AS</span> mon,
+    category,
+    <span class="sql-fn">SUM</span>(amount) <span class="sql-kw">AS</span> gmv,
+    <span class="sql-fn">COUNT</span>(DISTINCT user_id) <span class="sql-kw">AS</span> buyers
+<span class="sql-kw">FROM</span> dwd.order_detail
+<span class="sql-kw">WHERE</span> dt >= <span class="sql-str">'2024-01-01'</span>
+  <span class="sql-kw">AND</span> status = <span class="sql-str">'paid'</span>
+<span class="sql-kw">GROUP BY</span> 1, 2
+<span class="sql-kw">ORDER BY</span> mon, gmv <span class="sql-kw">DESC</span></pre>
+          </div>
+          <div class="compare-card">
+            <div class="compare-header">
+              <span class="compare-label label-blue">SPARK SQL（重写）</span>
+              <span class="compare-badge" style="background:rgba(0,212,255,.1);color:var(--accent)">快·内存</span>
+            </div>
+            <pre class="code" style="padding:14px;font-size:11px"><span class="cm"># 读 Parquet（比 Hive ORC 更通用）</span>
+df = spark.read.parquet(<span class="str">"oss://bucket/orders/"</span>)
+df.createOrReplaceTempView(<span class="str">"orders"</span>)
+
+spark.sql(<span class="str">"""
+    SELECT
+        date_format(create_time,'yyyy-MM') AS mon,
+        category,
+        SUM(amount)              AS gmv,
+        COUNT(DISTINCT user_id)  AS buyers
+    FROM orders
+    WHERE create_time >= '2024-01-01'
+      AND status = 'paid'
+    GROUP BY 1, 2
+    ORDER BY mon, gmv DESC
+"""</span>).show()</pre>
+          </div>
+        </div>
+        <div class="info-card" style="margin-top:12px">
+          <div class="card-body">💡 <strong style="color:var(--text)">迁移要点：</strong>Hive 的 <code style="color:var(--accent2)">DATE_FORMAT</code> → Spark SQL 同名函数直接用；表路径从 Hive Metastore 改成直接读文件；分区字段 <code style="color:var(--accent)">dt</code> 改成用 <code style="color:var(--accent)">create_time</code> 过滤（Spark 自动 partition pruning）</div>
+        </div>
+      </div>
+
+      <div id="ec-retention" class="ipanel">
+        <div class="code-block">
+          <div class="code-bar">
+            <div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div>
+            <span class="code-filename">retention.py &nbsp;· 复购率：30天内下过≥2单的用户比例</span>
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          </div>
+          <pre class="code">spark.sql(<span class="str">"""
+    WITH user_orders AS (
+        SELECT
+            user_id,
+            COUNT(DISTINCT order_id)  AS order_cnt,
+            MIN(create_time)          AS first_order,
+            MAX(create_time)          AS last_order
+        FROM orders
+        WHERE status = 'paid'
+          AND create_time >= date_sub(current_date(), 30)
+        GROUP BY user_id
+    ),
+    labeled AS (
+        SELECT *,
+            CASE WHEN order_cnt >= 2 THEN 1 ELSE 0 END AS is_repeat
+        FROM user_orders
+    )
+    SELECT
+        SUM(is_repeat)                               AS repeat_buyers,
+        COUNT(*)                                     AS total_buyers,
+        ROUND(SUM(is_repeat) / COUNT(*) * 100, 2)   AS repeat_rate_pct
+    FROM labeled
+"""</span>).show()</pre>
+        </div>
+      </div>
+
+      <div id="ec-window" class="ipanel">
+        <div class="code-block">
+          <div class="code-bar">
+            <div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div>
+            <span class="code-filename">sales_rank.py &nbsp;· 每品类 TOP3 销售额商品</span>
+            <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+          </div>
+          <pre class="code">spark.sql(<span class="str">"""
+    WITH category_sales AS (
+        SELECT
+            p.category,
+            p.product_name,
+            SUM(o.amount) AS sales
+        FROM orders o
+        JOIN products p ON o.product_id = p.product_id
+        WHERE o.status = 'paid'
+        GROUP BY p.category, p.product_name
+    ),
+    ranked AS (
+        SELECT *,
+            RANK() OVER (
+                PARTITION BY category
+                ORDER BY sales DESC
+            ) AS rnk
+        FROM category_sales
+    )
+    SELECT category, product_name, sales, rnk
+    FROM ranked
+    WHERE rnk <= 3
+    ORDER BY category, rnk
+"""</span>).show(<span class="num">50</span>, truncate=<span class="kw">False</span>)</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- § FUNNEL -->
+  <div id="sec-funnel">
+    <div class="sec-header">
+      <span class="sec-tag tag-blue">§ 03</span>
+      <div>
+        <div class="sec-title">用户行为漏斗分析</div>
+        <div class="sec-sub">曝光 → 点击 → 加购 → 下单 → 支付，五步转化</div>
+      </div>
+    </div>
+
+    <!-- funnel visualization -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <div style="font-family:'Azeret Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:1px">FUNNEL VISUALIZATION</div>
+        <div class="funnel" id="funnel-vis">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Azeret Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:1px">KEY METRICS</div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="funnel-metrics"></div>
+      </div>
+    </div>
+
+    <div class="code-block" style="margin-top:16px">
+      <div class="code-bar">
+        <div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div>
+        <span class="code-filename">funnel.py &nbsp;· 完整 Spark SQL 实现</span>
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+      </div>
+      <pre class="code"><span class="cm"># 用户行为日志已注册为 user_events 视图</span>
+<span class="cm"># schema: user_id, event_type, product_id, ts</span>
+
+spark.sql(<span class="str">"""
+    WITH step_flags AS (
+        SELECT
+            user_id,
+            MAX(CASE WHEN event_type = 'expose'   THEN 1 ELSE 0 END) AS s1_expose,
+            MAX(CASE WHEN event_type = 'click'    THEN 1 ELSE 0 END) AS s2_click,
+            MAX(CASE WHEN event_type = 'add_cart' THEN 1 ELSE 0 END) AS s3_cart,
+            MAX(CASE WHEN event_type = 'order'    THEN 1 ELSE 0 END) AS s4_order,
+            MAX(CASE WHEN event_type = 'pay'      THEN 1 ELSE 0 END) AS s5_pay
+        FROM user_events
+        WHERE dt = '2024-06-01'
+        GROUP BY user_id
+    ),
+    funnel_counts AS (
+        SELECT
+            SUM(s1_expose)                           AS expose_uv,
+            SUM(s1_expose * s2_click)                AS click_uv,
+            SUM(s1_expose * s2_click * s3_cart)      AS cart_uv,
+            SUM(s1_expose * s2_click * s3_cart
+                * s4_order)                          AS order_uv,
+            SUM(s1_expose * s2_click * s3_cart
+                * s4_order * s5_pay)                 AS pay_uv
+        FROM step_flags
+    )
+    SELECT
+        expose_uv,  click_uv,  cart_uv,  order_uv,  pay_uv,
+        ROUND(click_uv / expose_uv * 100, 2)         AS expose2click,
+        ROUND(cart_uv  / click_uv  * 100, 2)         AS click2cart,
+        ROUND(order_uv / cart_uv   * 100, 2)         AS cart2order,
+        ROUND(pay_uv   / order_uv  * 100, 2)         AS order2pay,
+        ROUND(pay_uv   / expose_uv * 100, 2)         AS overall_cvr
+    FROM funnel_counts
+"""</span>).show()</pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- § HOMEWORK 5 -->
+  <div id="sec-hw5">
+    <div class="sec-header">
+      <span class="sec-tag tag-green">作业</span>
+      <div>
+        <div class="sec-title">第5课作业：跑通漏斗分析</div>
+        <div class="sec-sub">预计时间：2-3小时 · 本地 PySpark 或 DataWorks 均可</div>
+      </div>
+    </div>
+    <div class="hw-box">
+      <div class="hw-header">
+        <div class="hw-num">HW5</div>
+        <div>
+          <div class="hw-title">用户行为漏斗分析 · Spark SQL 版</div>
+          <div class="hw-sub">从原始日志出发，输出漏斗转化率表</div>
+        </div>
+      </div>
+      <div class="hw-body">
+        <div class="hw-step">
+          <div class="hw-step-num">01</div>
+          <div class="hw-step-content"><strong>准备数据</strong>：用下方代码生成模拟用户行为日志（1万用户，5种事件），存成 Parquet 文件</div>
+        </div>
+        <div class="code-block" style="margin:0 0 14px 32px">
+          <div class="code-bar"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div><span class="code-filename">gen_data.py</span><button class="copy-btn" onclick="copyCode(this)">COPY</button></div>
+          <pre class="code" style="font-size:11px"><span class="kw">import</span> random
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> Row
+
+events = [<span class="str">"expose"</span>, <span class="str">"click"</span>, <span class="str">"add_cart"</span>, <span class="str">"order"</span>, <span class="str">"pay"</span>]
+probs  = [<span class="num">1.0</span>, <span class="num">0.40</span>, <span class="num">0.20</span>, <span class="num">0.10</span>, <span class="num">0.07</span>]  <span class="cm"># 每步触发概率</span>
+
+rows = []
+<span class="kw">for</span> uid <span class="kw">in</span> range(<span class="num">1</span>, <span class="num">10001</span>):
+    <span class="kw">for</span> ev, p <span class="kw">in</span> zip(events, probs):
+        <span class="kw">if</span> random.random() < p:
+            rows.append(Row(
+                user_id=uid, event_type=ev,
+                product_id=random.randint(<span class="num">1</span>,<span class="num">100</span>),
+                dt=<span class="str">"2024-06-01"</span>
+            ))
+
+df = spark.createDataFrame(rows)
+df.write.parquet(<span class="str">"/tmp/user_events"</span>, mode=<span class="str">"overwrite"</span>)</pre>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">02</div>
+          <div class="hw-step-content"><strong>跑通漏斗 SQL</strong>：复制上方完整 Spark SQL，注册视图，执行，截图输出结果</div>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">03</div>
+          <div class="hw-step-content"><strong>扩展练习</strong>：在漏斗基础上，按 <code style="color:var(--accent)">product_id % 5</code> 分组，输出各组的整体转化率，找出哪组最高</div>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">04</div>
+          <div class="hw-step-content"><strong>对比写法</strong>：用 DataFrame API 重写同一漏斗逻辑，确认两者结果一致</div>
+        </div>
+        <ul class="checklist" style="margin-left:32px">
+          <li>漏斗5步的 UV 数值与转化率</li>
+          <li>overall_cvr（全程转化率）截图</li>
+          <li>扩展：分组转化率表</li>
+          <li>DataFrame API 版本代码</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /panel-5 -->
+
+<!-- ═══════════════════ LESSON 6 ═══════════════════ -->
+<div class="panel" id="panel-6">
+
+  <!-- § SKEW THEORY -->
+  <div id="sec-skew-theory">
+    <div class="sec-header">
+      <span class="sec-tag tag-orange">§ 01</span>
+      <div>
+        <div class="sec-title">数据倾斜：原因与定位</div>
+        <div class="sec-sub">为什么99个Task都完成了，第100个还在跑？</div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="info-card">
+        <div class="card-icon">💀</div>
+        <div class="card-title">什么是数据倾斜</div>
+        <div class="card-body">GroupBy/Join 后，某个 key 的数据量远大于其他 key，导致一个 Task 处理了 90% 的数据，其他 Task 早就空闲了</div>
+        <div class="card-highlight red">99 tasks: 2s ｜ 1 task: 47min</div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">🔍</div>
+        <div class="card-title">如何定位</div>
+        <div class="card-body">Spark UI → Stages → 找 max duration 远大于 median 的 Stage；看 Task 的 Shuffle Read Size 分布</div>
+        <div class="card-highlight orange">Spark UI → Jobs → Stages → Tasks</div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">典型触发场景</div>
+        <div class="card-body">电商：用户行为日志里 "爬虫账号" 产生百万条记录；Join 时 NULL 值被当成同一个 key 聚合</div>
+        <div class="card-highlight yellow">SELECT count(*) GROUP BY user_id → 找出异常 key</div>
+      </div>
+    </div>
+
+    <!-- skew visualizer -->
+    <div style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-family:'Azeret Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">TASK DURATION · BEFORE FIX</div>
+        <div style="display:flex;gap:8px">
+          <span style="font-size:10px;color:var(--muted)">median: <span style="color:var(--green)">1.8s</span></span>
+          <span style="font-size:10px;color:var(--muted)">max: <span style="color:var(--red)">47min</span></span>
+        </div>
+      </div>
+      <div class="skew-section" id="skew-vis"></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-family:'Azeret Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:1px">DIAGNOSIS CODE</div>
+      <div class="code-block">
+        <div class="code-bar"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div><span class="code-filename">find_skew.py</span><button class="copy-btn" onclick="copyCode(this)">COPY</button></div>
+        <pre class="code"><span class="cm"># Step 1：找出哪个 key 数据量异常</span>
+df.groupBy(<span class="str">"user_id"</span>) \
+  .count() \
+  .orderBy(col(<span class="str">"count"</span>).desc()) \
+  .show(<span class="num">20</span>)
+
+<span class="cm"># Step 2：统计 key 分布</span>
+df.groupBy(<span class="str">"user_id"</span>) \
+  .count() \
+  .selectExpr(
+      <span class="str">"percentile_approx(count, 0.5) as median"</span>,
+      <span class="str">"percentile_approx(count, 0.99) as p99"</span>,
+      <span class="str">"max(count) as max_count"</span>
+  ).show()
+
+<span class="cm"># Step 3：NULL key 检查（NULL 在 JOIN 时全聚到一个 Task）</span>
+df.filter(col(<span class="str">"user_id"</span>).isNull()).count()</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- § SKEW FIX -->
+  <div id="sec-skew-fix">
+    <div class="sec-header">
+      <span class="sec-tag tag-orange">§ 02</span>
+      <div>
+        <div class="sec-title">解决方案：加盐 + 广播 Join</div>
+        <div class="sec-sub">两种武器，对应不同场景</div>
+      </div>
+    </div>
+
+    <div class="inner-tabs">
+      <button class="itab active" onclick="switchItab(this,'fix-salt','fix-group')">加盐打散（GroupBy 倾斜）</button>
+      <button class="itab" onclick="switchItab(this,'fix-broadcast','fix-group')">广播 Join（Join 倾斜）</button>
+    </div>
+
+    <div id="fix-group">
+      <div id="fix-salt" class="ipanel visible">
+        <div style="margin-bottom:12px">
+          <div class="flow">
+            <div class="flow-node red">倾斜 key<br><span style="font-size:9px">user_id=BOT</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node yellow">加随机盐<br><span style="font-size:9px">BOT_0 ~ BOT_9</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node accent">分散到10个Task<br><span style="font-size:9px">局部聚合</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node green">去盐再聚合<br><span style="font-size:9px">全局合并</span></div>
+          </div>
+        </div>
+        <div class="code-block">
+          <div class="code-bar"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div><span class="code-filename">salt_groupby.py</span><button class="copy-btn" onclick="copyCode(this)">COPY</button></div>
+          <pre class="code"><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> col, floor, rand, concat_ws, sum
+
+SALT_NUM = <span class="num">10</span>  <span class="cm"># 把倾斜 key 打散成10份</span>
+
+<span class="cm"># Step 1：打盐 —— 给每行加随机后缀</span>
+salted = df.withColumn(
+    <span class="str">"salted_key"</span>,
+    concat_ws(<span class="str">"_"</span>, col(<span class="str">"user_id"</span>), (floor(rand() * SALT_NUM)).cast(<span class="str">"string"</span>))
+)
+
+<span class="cm"># Step 2：局部聚合（此时 key 已分散，无倾斜）</span>
+partial = salted.groupBy(<span class="str">"salted_key"</span>) \
+    .agg(sum(<span class="str">"amount"</span>).alias(<span class="str">"partial_sum"</span>))
+
+<span class="cm"># Step 3：去盐 —— 截掉后缀，还原原始 key</span>
+partial = partial.withColumn(
+    <span class="str">"user_id"</span>,
+    col(<span class="str">"salted_key"</span>).substr(<span class="num">1</span>, col(<span class="str">"salted_key"</span>).instr(<span class="str">"_"</span>) - <span class="num">1</span>)
+    <span class="cm"># 或用 split(col("salted_key"),"_")[0]</span>
+)
+
+<span class="cm"># Step 4：全局再聚合（数量少，速度快）</span>
+result = partial.groupBy(<span class="str">"user_id"</span>) \
+    .agg(sum(<span class="str">"partial_sum"</span>).alias(<span class="str">"total_amount"</span>))
+
+result.show()</pre>
+        </div>
+      </div>
+
+      <div id="fix-broadcast" class="ipanel">
+        <div style="margin-bottom:12px">
+          <div class="flow">
+            <div class="flow-node red">大表 Join 小表<br><span style="font-size:9px">触发 Shuffle</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node accent">broadcast(小表)<br><span style="font-size:9px">发到每个节点</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node green">各节点本地 Join<br><span style="font-size:9px">零 Shuffle</span></div>
+          </div>
+        </div>
+        <div class="code-block">
+          <div class="code-bar"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div><span class="code-filename">broadcast_join.py</span><button class="copy-btn" onclick="copyCode(this)">COPY</button></div>
+          <pre class="code"><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> broadcast
+
+<span class="cm"># 场景：orders（100亿行）JOIN users（5000行）</span>
+<span class="cm"># 用户表很小，直接广播</span>
+
+result = orders_df.join(
+    broadcast(users_df),  <span class="cm"># ← 关键：把小表标记为广播</span>
+    on=<span class="str">"user_id"</span>,
+    how=<span class="str">"left"</span>
+)
+
+<span class="cm"># ── 自动广播阈值（默认 10MB，可调大）──</span>
+spark.conf.set(<span class="str">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="str">"50m"</span>)
+
+<span class="cm"># ── 两张大表都有倾斜 key？先过滤倾斜部分分别处理 ──</span>
+SKEW_KEYS = [<span class="str">"BOT_001"</span>, <span class="str">"BOT_002"</span>]
+
+normal = orders_df.filter(~col(<span class="str">"user_id"</span>).isin(SKEW_KEYS))
+skewed = orders_df.filter( col(<span class="str">"user_id"</span>).isin(SKEW_KEYS))
+
+result_normal = normal.join(users_df,  on=<span class="str">"user_id"</span>, how=<span class="str">"left"</span>)
+result_skewed = skewed.join(broadcast(users_df.filter(
+    col(<span class="str">"user_id"</span>).isin(SKEW_KEYS)
+)), on=<span class="str">"user_id"</span>, how=<span class="str">"left"</span>)
+
+final = result_normal.union(result_skewed)</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- § PARAMS -->
+  <div id="sec-params">
+    <div class="sec-header">
+      <span class="sec-tag tag-orange">§ 03</span>
+      <div>
+        <div class="sec-title">常用调优参数速查表</div>
+        <div class="sec-sub">面试必考 · 生产必调</div>
+      </div>
+    </div>
+
+    <div class="code-block" style="margin-bottom:16px">
+      <div class="code-bar"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div><span class="code-filename">spark_config_template.py &nbsp;· 生产配置模板</span><button class="copy-btn" onclick="copyCode(this)">COPY</button></div>
+      <pre class="code">spark = SparkSession.builder \
+    .appName(<span class="str">"prod-job"</span>) \
+    <span class="cm"># ── Executor 资源 ──</span>
+    .config(<span class="str">"spark.executor.memory"</span>,         <span class="str">"8g"</span>)     <span class="cm"># 每个 Executor 内存</span>
+    .config(<span class="str">"spark.executor.cores"</span>,           <span class="str">"4"</span>)      <span class="cm"># 每个 Executor CPU核</span>
+    .config(<span class="str">"spark.executor.instances"</span>,       <span class="str">"20"</span>)     <span class="cm"># Executor 数量</span>
+    .config(<span class="str">"spark.driver.memory"</span>,            <span class="str">"4g"</span>)     <span class="cm"># Driver 内存</span>
+    <span class="cm"># ── 并行度 ──</span>
+    .config(<span class="str">"spark.default.parallelism"</span>,       <span class="str">"160"</span>)    <span class="cm"># RDD 默认并行度</span>
+    .config(<span class="str">"spark.sql.shuffle.partitions"</span>,    <span class="str">"200"</span>)    <span class="cm"># Shuffle 分区数（最重要）</span>
+    <span class="cm"># ── 广播 ──</span>
+    .config(<span class="str">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="str">"20971520"</span>)  <span class="cm"># 20MB</span>
+    <span class="cm"># ── 动态资源 ──</span>
+    .config(<span class="str">"spark.dynamicAllocation.enabled"</span>,  <span class="str">"true"</span>)
+    .config(<span class="str">"spark.dynamicAllocation.minExecutors"</span>, <span class="str">"2"</span>)
+    .config(<span class="str">"spark.dynamicAllocation.maxExecutors"</span>, <span class="str">"50"</span>)
+    <span class="cm"># ── AQE（Spark 3.x 自适应查询执行）──</span>
+    .config(<span class="str">"spark.sql.adaptive.enabled"</span>,       <span class="str">"true"</span>)   <span class="cm"># 强烈推荐开启</span>
+    .config(<span class="str">"spark.sql.adaptive.skewJoin.enabled"</span>,<span class="str">"true"</span>)  <span class="cm"># 自动处理倾斜</span>
+    .getOrCreate()</pre>
+    </div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <table class="param-table">
+        <thead>
+          <tr>
+            <th>参数</th><th>默认值</th><th>说明 & 调优建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="param-name">spark.sql.shuffle.partitions</span></td>
+            <td><span class="param-default">200</span></td>
+            <td><span class="param-desc">Shuffle 后的分区数。<strong style="color:var(--text)">最常调的参数</strong>。数据量大时调大（如1000），数据量小时调小（如50）防止产生大量空 Task</span><span class="param-tip">公式参考：数据量(GB) × 2 ~ 4</span></td>
+          </tr>
+          <tr>
+            <td><span class="param-name">spark.executor.memory</span></td>
+            <td><span class="param-default">1g</span></td>
+            <td><span class="param-desc">每个 Executor 的内存。OOM 时调大；但单个 Executor 不宜超过 64g（GC 压力大）</span><span class="param-tip">生产推荐：4g ~ 16g</span></td>
+          </tr>
+          <tr>
+            <td><span class="param-name">spark.executor.cores</span></td>
+            <td><span class="param-default">1</span></td>
+            <td><span class="param-desc">每个 Executor 的 CPU 核数。影响并发 Task 数。推荐 2~5，过大会导致内存竞争</span><span class="param-tip">Task 并发 = cores × instances</span></td>
+          </tr>
+          <tr>
+            <td><span class="param-name">spark.sql.adaptive.enabled</span></td>
+            <td><span class="param-default">true (3.x)</span></td>
+            <td><span class="param-desc"><strong style="color:var(--green)">AQE 自适应查询执行</strong>：运行时动态调整 shuffle 分区数、处理倾斜。Spark 3.0+ 默认开启，强烈保持 true</span><span class="param-tip">开启后可省去大量手动调参</span></td>
+          </tr>
+          <tr>
+            <td><span class="param-name">spark.memory.fraction</span></td>
+            <td><span class="param-default">0.6</span></td>
+            <td><span class="param-desc">Spark 内存池占堆内存的比例（用于执行和存储）。遇到 OOM 可适当调大到 0.75</span></td>
+          </tr>
+          <tr>
+            <td><span class="param-name">spark.sql.autoBroadcastJoinThreshold</span></td>
+            <td><span class="param-default">10MB</span></td>
+            <td><span class="param-desc">小于此值的表自动广播。设为 -1 禁用自动广播。可按实际小表大小调整</span><span class="param-tip">推荐：20m ~ 100m</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- § HOMEWORK 6 -->
+  <div id="sec-hw6">
+    <div class="sec-header">
+      <span class="sec-tag tag-green">作业</span>
+      <div>
+        <div class="sec-title">第6课作业：模拟倾斜场景并解决</div>
+        <div class="sec-sub">预计时间：3-4小时 · 需要截图对比前后耗时</div>
+      </div>
+    </div>
+    <div class="hw-box">
+      <div class="hw-header">
+        <div class="hw-num" style="color:var(--accent2)">HW6</div>
+        <div>
+          <div class="hw-title">数据倾斜：复现 → 定位 → 修复</div>
+          <div class="hw-sub">截图对比 Spark UI 前后耗时</div>
+        </div>
+      </div>
+      <div class="hw-body">
+        <div class="hw-step">
+          <div class="hw-step-num">01</div>
+          <div class="hw-step-content"><strong>制造倾斜数据</strong>：生成 100万行订单，其中 user_id="BOT001" 占 80万行（80% 倾斜）</div>
+        </div>
+        <div class="code-block" style="margin:0 0 14px 32px">
+          <div class="code-bar"><div class="code-dots"><span style="background:#ff5f57"></span><span style="background:#ffbd2e"></span><span style="background:#28c840"></span></div><span class="code-filename">gen_skew.py</span><button class="copy-btn" onclick="copyCode(this)">COPY</button></div>
+          <pre class="code" style="font-size:11px"><span class="kw">import</span> random
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> Row
+
+rows = []
+<span class="cm"># 制造严重倾斜：BOT001 占 80%</span>
+<span class="kw">for</span> i <span class="kw">in</span> range(<span class="num">800_000</span>):
+    rows.append(Row(user_id=<span class="str">"BOT001"</span>, amount=random.uniform(<span class="num">1</span>,<span class="num">100</span>)))
+<span class="kw">for</span> i <span class="kw">in</span> range(<span class="num">200_000</span>):
+    rows.append(Row(user_id=<span class="str">f"U{random.randint(1,9999):05d}"</span>,
+                    amount=random.uniform(<span class="num">1</span>,<span class="num">100</span>)))
+
+df = spark.createDataFrame(rows)
+df.write.parquet(<span class="str">"/tmp/skew_orders"</span>, mode=<span class="str">"overwrite"</span>)</pre>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">02</div>
+          <div class="hw-step-content"><strong>截图①</strong>：不处理倾斜，直接 groupBy("user_id").sum("amount")，打开 Spark UI → Stages → Tasks，截图最慢 Task 耗时</div>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">03</div>
+          <div class="hw-step-content"><strong>用加盐方案修复</strong>：复制上方 salt_groupby.py，修改 SALT_NUM=20，跑同样的聚合</div>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">04</div>
+          <div class="hw-step-content"><strong>截图②</strong>：修复后 Spark UI Tasks 页，对比最慢 Task 耗时，观察 duration 分布是否更均匀</div>
+        </div>
+        <div class="hw-step">
+          <div class="hw-step-num">05</div>
+          <div class="hw-step-content"><strong>开启 AQE</strong>：设置 spark.sql.adaptive.skewJoin.enabled=true，再跑一次，看 AQE 是否自动检测并处理了倾斜</div>
+        </div>
+        <ul class="checklist" style="margin-left:32px">
+          <li>Spark UI 截图①：倾斜时 Task duration 分布</li>
+          <li>Spark UI 截图②：加盐修复后 Task duration 分布</li>
+          <li>前后最慢 Task 耗时对比数据</li>
+          <li>AQE 开启后 Spark UI 是否显示 "skew join" 标记</li>
+          <li>（加分）尝试调整 SALT_NUM，找出最优值</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /panel-6 -->
+
+</div><!-- /content -->
+</div><!-- /layout -->
+
+<script>
+// ── state ──
+let currentLesson = 5;
+let visitedSections = new Set(['5-sql-compare']);
+
+// ── funnel data ──
+const funnelData = [
+  {name:'曝光',  uv:10000, color:'rgba(0,212,255,0.8)'},
+  {name:'点击',  uv:4000,  color:'rgba(0,212,255,0.65)'},
+  {name:'加购',  uv:2000,  color:'rgba(57,217,138,0.75)'},
+  {name:'下单',  uv:1000,  color:'rgba(255,193,7,0.8)'},
+  {name:'支付',  uv:700,   color:'rgba(255,107,53,0.85)'},
+];
+
+function renderFunnel() {
+  const vis = document.getElementById('funnel-vis');
+  const metrics = document.getElementById('funnel-metrics');
+  if (!vis) return;
+
+  let vhtml = '';
+  funnelData.forEach((step, i) => {
+    const pct = (step.uv / funnelData[0].uv * 100).toFixed(1);
+    const width = pct;
+    vhtml += `<div class="funnel-step">
+      <div class="funnel-label">${step.name}</div>
+      <div class="funnel-bar-outer">
+        <div class="funnel-bar" style="width:${width}%;background:${step.color};color:#0d1117;min-width:40px">
+          ${pct}%
+        </div>
+      </div>
+      <div class="funnel-count" style="color:${step.color}">${step.uv.toLocaleString()}</div>
+    </div>`;
+    if (i < funnelData.length - 1) {
+      const dropRate = ((funnelData[i+1].uv / step.uv) * 100).toFixed(1);
+      vhtml += `<div class="funnel-drop" style="padding-left:130px">↓ 转化 ${dropRate}%</div>`;
+    }
+  });
+  vis.innerHTML = vhtml;
+
+  const overallCvr = (700 / 10000 * 100).toFixed(2);
+  metrics.innerHTML = `
+    <div class="info-card" style="padding:10px 14px">
+      <div style="font-family:'Azeret Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px">整体转化率</div>
+      <div style="font-family:'Azeret Mono',monospace;font-size:22px;font-weight:700;color:var(--accent)">${overallCvr}%</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">10000 曝光 → 700 支付</div>
+    </div>
+    ${[
+      {label:'曝光→点击', val:'40.0%', color:'var(--accent)'},
+      {label:'点击→加购', val:'50.0%', color:'var(--green)'},
+      {label:'加购→下单', val:'50.0%', color:'var(--yellow)'},
+      {label:'下单→支付', val:'70.0%', color:'var(--accent2)'},
+    ].map(m => `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:4px">
+        <span style="font-size:11px;color:var(--muted)">${m.label}</span>
+        <span style="font-family:'Azeret Mono',monospace;font-size:13px;font-weight:700;color:${m.color}">${m.val}</span>
+      </div>`).join('')}`;
+}
+
+// ── skew visualizer ──
+const skewTasks = [
+  {id:'Task-1',  dur:'1.2s', pct:2,   color:'var(--green)'},
+  {id:'Task-2',  dur:'1.8s', pct:3,   color:'var(--green)'},
+  {id:'Task-3',  dur:'2.1s', pct:3,   color:'var(--green)'},
+  {id:'Task-4',  dur:'1.5s', pct:2.5, color:'var(--green)'},
+  {id:'Task-5',  dur:'1.9s', pct:3,   color:'var(--green)'},
+  {id:'Task-6',  dur:'2.3s', pct:3.5, color:'var(--accent)'},
+  {id:'Task-7',  dur:'1.7s', pct:2.7, color:'var(--green)'},
+  {id:'Task-8',  dur:'47min',pct:100, color:'var(--red)'},
+];
+
+function renderSkew() {
+  const el = document.getElementById('skew-vis');
+  if (!el) return;
+  el.innerHTML = skewTasks.map(t => `
+    <div class="skew-row">
+      <div class="skew-label">${t.id}</div>
+      <div class="skew-bar-wrap">
+        <div class="skew-bar" style="width:${t.pct}%;background:${t.color};max-width:100%">
+          ${t.pct > 5 ? t.id : ''}
+        </div>
+      </div>
+      <div class="skew-time" style="color:${t.color}">${t.dur}</div>
+    </div>`).join('');
+}
+
+// ── lesson switcher ──
+function switchLesson(n) {
+  currentLesson = n;
+  document.querySelectorAll('.ltab').forEach(t => {
+    t.classList.remove('active', 'active2');
+    if (+t.dataset.lesson === n) {
+      t.classList.add(n === 5 ? 'active' : 'active2');
+    }
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'));
+  document.getElementById(`panel-${n}`).classList.add('visible');
+  document.getElementById('nav-5').style.display = n === 5 ? 'block' : 'none';
+  document.getElementById('nav-6').style.display = n === 6 ? 'block' : 'none';
+
+  // reset nav active
+  document.querySelectorAll('.nav-item').forEach(it => it.classList.remove('active', 'active2'));
+  const firstSec = n === 5 ? 'sql-compare' : 'skew-theory';
+  const firstItem = document.querySelector(`.nav-item[data-lesson="${n}"][data-sec="${firstSec}"]`);
+  if (firstItem) firstItem.classList.add(n === 5 ? 'active' : 'active2');
+
+  if (n === 6) { renderSkew(); }
+  updateProgress();
+}
+
+// ── nav ──
+function navTo(lesson, sec) {
+  if (lesson !== currentLesson) switchLesson(lesson);
+  const el = document.getElementById(`sec-${sec}`);
+  if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  document.querySelectorAll('.nav-item').forEach(it => it.classList.remove('active','active2'));
+  const item = document.querySelector(`.nav-item[data-lesson="${lesson}"][data-sec="${sec}"]`);
+  if (item) item.classList.add(lesson === 5 ? 'active' : 'active2');
+  visitedSections.add(`${lesson}-${sec}`);
+  updateProgress();
+}
+
+// ── inner tabs ──
+function switchItab(btn, targetId, groupId) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.ipanel').forEach(p => p.classList.remove('visible'));
+  group.querySelectorAll('.itab')  .forEach(b => b.classList.remove('active','active-orange'));
+  document.getElementById(targetId).classList.add('visible');
+  btn.classList.add('active');
+}
+
+// ── copy ──
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'DONE';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.textContent = 'COPY'; btn.style.color = ''; }, 1500);
+  });
+}
+
+// ── progress ──
+const totalSections = 8;
+function updateProgress() {
+  const pct = Math.round(visitedSections.size / totalSections * 100);
+  document.getElementById('pb').style.width = pct + '%';
+  document.getElementById('pb-pct').textContent = pct + '%';
+}
+
+// ── init ──
+renderFunnel();
+renderSkew();
+updateProgress();
+</script>
+</body>
+</html>

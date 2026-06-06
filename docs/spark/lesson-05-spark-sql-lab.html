@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Spark Lab</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
+  background: #0d1117; color: #e6edf3;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+
+/* ── header ── */
+#header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px; background: #161b22;
+  border-bottom: 1px solid #30363d; flex-shrink: 0;
+}
+#header-left { display: flex; align-items: center; gap: 12px; }
+#header-left .logo { font-size: 22px; }
+#header-left .title { font-weight: 700; font-size: 16px; }
+#header-left .sub { color: #8b949e; font-size: 11px; margin-top: 2px; }
+#header-right { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+#progress-label { color: #8b949e; }
+#progress-bar-wrap { width: 120px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+#progress-bar { height: 100%; background: linear-gradient(90deg,#58a6ff,#3fb950); border-radius: 3px; transition: width .4s; width: 0%; }
+#progress-pct { color: #58a6ff; font-weight: 700; min-width: 32px; }
+
+/* ── body ── */
+#body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── sidebar ── */
+#sidebar { width: 200px; background: #0d1117; border-right: 1px solid #30363d; overflow-y: auto; flex-shrink: 0; }
+.sidebar-item {
+  display: block; width: 100%; text-align: left;
+  padding: 12px 16px; background: transparent;
+  border-left: 2px solid transparent;
+  border-right: none; border-top: none;
+  border-bottom: 1px solid #30363d;
+  color: #e6edf3; transition: background .15s;
+}
+.sidebar-item:hover { background: rgba(255,255,255,0.04); }
+.sidebar-item.active { background: rgba(88,166,255,0.08); border-left-color: #58a6ff; }
+.sidebar-item .s-top { display: flex; justify-content: space-between; align-items: center; }
+.sidebar-item .s-icon { font-size: 16px; }
+.sidebar-item .s-check { color: #3fb950; font-size: 11px; }
+.sidebar-item .s-title { font-size: 12px; font-weight: 600; margin-top: 4px; color: #e6edf3; }
+.sidebar-item.active .s-title { color: #58a6ff; }
+.sidebar-item .s-desc { font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+/* ── main ── */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── lesson header ── */
+#lesson-header {
+  padding: 16px 24px 0; background: #161b22;
+  border-bottom: 1px solid #30363d; flex-shrink: 0;
+}
+#lesson-top { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+#lesson-icon { font-size: 24px; flex-shrink: 0; }
+#lesson-title { font-weight: 700; font-size: 15px; }
+#lesson-theory { color: #8b949e; font-size: 12px; margin-top: 4px; line-height: 1.7; max-width: 600px; }
+#tabs { display: flex; gap: 4px; }
+.tab-btn {
+  padding: 8px 16px; font-size: 12px; border-radius: 6px 6px 0 0;
+  border: 1px solid transparent; border-bottom: 1px solid #30363d;
+  background: transparent; color: #8b949e; margin-bottom: -1px;
+  transition: color .15s;
+}
+.tab-btn:hover { color: #e6edf3; }
+.tab-btn.active {
+  background: #161b22; color: #58a6ff;
+  border-color: #30363d; border-bottom-color: #161b22;
+}
+
+/* ── content ── */
+#content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ── code view ── */
+.copy-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.section-label { font-size: 11px; color: #8b949e; letter-spacing: 1px; text-transform: uppercase; }
+#copy-btn {
+  padding: 4px 12px; font-size: 11px;
+  background: rgba(255,255,255,0.06); color: #8b949e;
+  border: 1px solid #30363d; border-radius: 6px;
+  transition: color .15s;
+}
+#copy-btn:hover { color: #58a6ff; }
+.code-wrap { border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+.code-titlebar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid #30363d;
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; opacity: .8; }
+.code-filename { color: #8b949e; font-size: 11px; margin-left: 6px; }
+#code-pre {
+  margin: 0; padding: 20px; overflow-x: auto;
+  font-size: 13px; line-height: 1.7;
+  background: #0d1117; color: #e6edf3;
+  font-family: inherit;
+}
+.key-points {
+  margin-top: 12px; padding: 14px;
+  background: rgba(210,153,34,0.06);
+  border: 1px solid rgba(210,153,34,0.2); border-radius: 8px;
+}
+.key-points-title { color: #d29922; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+.key-point { display: flex; gap: 8px; margin-bottom: 5px; font-size: 12px; color: #8b949e; }
+.key-point .arrow { color: #58a6ff; flex-shrink: 0; }
+
+/* ── sim view ── */
+.sim-wrap { display: flex; flex-direction: column; gap: 14px; }
+.source-box { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px; }
+.source-label { font-size: 11px; color: #8b949e; margin-bottom: 8px; }
+.steps-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.step-btn {
+  padding: 8px 14px; border-radius: 8px; font-size: 12px;
+  border: 1px solid #30363d; background: rgba(255,255,255,0.03);
+  color: #8b949e; text-align: left; transition: all .15s;
+}
+.step-btn:hover { border-color: #8b949e; color: #e6edf3; }
+.step-btn.active { border-color: #58a6ff; background: rgba(88,166,255,0.1); color: #58a6ff; }
+.step-btn .sl { font-weight: 700; }
+.step-btn .sd { font-size: 11px; margin-top: 2px; opacity: .7; }
+.result-label { font-size: 11px; color: #58a6ff; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+.result-box { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 14px; }
+.sim-placeholder { color: #484f58; text-align: center; padding: 40px 0; font-size: 13px; }
+
+/* ── tables ── */
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th { text-align: left; padding: 4px 10px; color: #58a6ff; border-bottom: 1px solid #30363d; font-weight: 600; }
+td { padding: 4px 10px; border-bottom: 1px solid rgba(48,54,61,0.5); }
+tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+.c-green  { color: #3fb950; }
+.c-red    { color: #f85149; }
+.c-amber  { color: #d29922; }
+.c-cyan   { color: #58a6ff; }
+.c-purple { color: #c792ea; }
+.c-muted  { color: #8b949e; }
+.c-dim    { color: #484f58; }
+.c-num    { color: #f78c6c; }
+
+/* ── groups ── */
+.group-box { border: 1px solid #30363d; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+.group-title { font-size: 11px; color: #58a6ff; margin-bottom: 6px; }
+.group-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 3px; }
+.group-cell {
+  background: rgba(255,255,255,0.06); padding: 1px 6px;
+  border-radius: 4px; font-size: 11px;
+}
+
+/* ── broadcast vis ── */
+.broadcast-wrap { }
+.broadcast-note { color: #d29922; font-size: 12px; margin-bottom: 12px; }
+.broadcast-nodes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.bcast-source {
+  border: 1px solid #58a6ff; border-radius: 8px;
+  padding: 8px 12px; text-align: center; font-size: 12px;
+}
+.bcast-arrow { color: #484f58; font-size: 18px; }
+.bcast-node {
+  border: 1px solid #30363d; border-radius: 8px;
+  padding: 8px 12px; text-align: center; font-size: 12px;
+}
+.broadcast-sub { color: #8b949e; font-size: 11px; margin-top: 10px; }
+
+/* ── schema ── */
+.schema-root { color: #d29922; margin-bottom: 8px; font-size: 12px; }
+.schema-row { display: flex; gap: 8px; font-size: 12px; margin-bottom: 2px; }
+
+/* ── quiz ── */
+.quiz-wrap { max-width: 560px; }
+.quiz-box { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; }
+.quiz-q { font-size: 14px; margin-bottom: 16px; line-height: 1.7; }
+.quiz-options { display: flex; flex-direction: column; gap: 8px; }
+.quiz-opt {
+  padding: 10px 14px; text-align: left;
+  border: 1px solid #30363d; border-radius: 8px;
+  background: rgba(255,255,255,0.03); color: #e6edf3;
+  font-size: 13px; transition: all .15s;
+}
+.quiz-opt:hover:not([disabled]) { border-color: #8b949e; }
+.quiz-opt.selected { border-color: #58a6ff; background: rgba(88,166,255,0.1); color: #58a6ff; }
+.quiz-opt.correct  { border-color: #3fb950; background: rgba(63,185,80,0.1); color: #3fb950; }
+.quiz-opt.wrong    { border-color: #f85149; background: rgba(248,81,73,0.1); color: #f85149; }
+.quiz-opt.dimmed   { color: #484f58; }
+.quiz-letter { opacity: .5; margin-right: 8px; }
+#submit-btn {
+  margin-top: 14px; width: 100%; padding: 10px 0;
+  font-size: 13px; font-weight: 700; border-radius: 8px; border: none;
+  transition: all .2s;
+}
+#submit-btn.active { background: linear-gradient(90deg,#58a6ff,#3fb950); color: #0d1117; }
+#submit-btn.inactive { background: rgba(255,255,255,0.06); color: #484f58; cursor: not-allowed; }
+.quiz-result {
+  margin-top: 14px; padding: 14px; border-radius: 8px; font-size: 13px;
+}
+.quiz-result.correct { border: 1px solid rgba(63,185,80,0.4); background: rgba(63,185,80,0.08); color: #3fb950; }
+.quiz-result.wrong   { border: 1px solid rgba(248,81,73,0.4); background: rgba(248,81,73,0.08); color: #f85149; }
+.quiz-result-title { font-weight: 700; margin-bottom: 6px; }
+.quiz-result-exp { opacity: .85; font-size: 12px; line-height: 1.6; }
+#next-btn {
+  margin-top: 10px; width: 100%; padding: 12px 0; font-size: 13px;
+  background: rgba(255,255,255,0.04); border: 1px solid #30363d;
+  border-radius: 8px; color: #8b949e; transition: all .15s;
+}
+#next-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+.complete-banner {
+  margin-top: 10px; padding: 14px; border-radius: 8px; text-align: center;
+  border: 1px solid rgba(210,153,34,0.4); background: rgba(210,153,34,0.08);
+  color: #d29922; font-size: 13px;
+}
+
+/* ── syntax highlight ── */
+.kw { color: #c792ea; }
+.str { color: #a5d6ff; }
+.num { color: #f78c6c; }
+.cm  { color: #6b7280; }
+.method { color: #82aaff; }
+</style>
+</head>
+<body>
+
+<!-- header -->
+<div id="header">
+  <div id="header-left">
+    <div class="logo">⚡</div>
+    <div>
+      <div class="title">Spark Lab</div>
+      <div class="sub">第5课 · PySpark 实战训练</div>
+    </div>
+  </div>
+  <div id="header-right">
+    <span id="progress-label">0/5 完成</span>
+    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+    <span id="progress-pct">0%</span>
+  </div>
+</div>
+
+<div id="body">
+  <div id="sidebar"></div>
+  <div id="main">
+    <div id="lesson-header">
+      <div id="lesson-top">
+        <div id="lesson-icon"></div>
+        <div>
+          <div id="lesson-title"></div>
+          <div id="lesson-theory"></div>
+        </div>
+      </div>
+      <div id="tabs">
+        <button class="tab-btn active" data-tab="code">📝 代码</button>
+        <button class="tab-btn" data-tab="sim">▶ 模拟执行</button>
+        <button class="tab-btn" data-tab="quiz">🧠 测一测</button>
+      </div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+// ── data ──────────────────────────────────────────────────────────
+const USERS = [
+  {user_id:"U01", name:"Alice", tier:"VIP"},
+  {user_id:"U02", name:"Bob",   tier:"Normal"},
+  {user_id:"U04", name:"Diana", tier:"VIP"},
+];
+
+const LESSONS = [
+  {
+    id:1, title:"DataFrame 基础操作", icon:"📊", desc:"读数据、看结构、过滤",
+    theory:"DataFrame 是 Spark 最常用的数据结构，就像一张 Excel 表。最基本的三件事：读进来、看看长什么样、过滤你要的行。",
+    keyPoints:[
+      "filter() 用于行过滤，select() 用于列选择",
+      "inferSchema=True 让 Spark 自动推断数据类型",
+      "col() 函数引用列，支持运算符组合条件",
+    ],
+    code:[
+      {t:"kw",v:"from"},{t:"",v:" pyspark.sql "},{t:"kw",v:"import"},{t:"",v:" SparkSession\n"},
+      {t:"kw",v:"from"},{t:"",v:" pyspark.sql.functions "},{t:"kw",v:"import"},{t:"",v:" col\n\n"},
+      {t:"",v:"spark = SparkSession."},{t:"method",v:"builder"},{t:"",v:" \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"appName"},{t:"",v:"("},{t:"str",v:'"MyFirstSpark"'},{t:"",v:") \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"getOrCreate"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# 读 CSV，自动推断列类型\n"},
+      {t:"",v:"df = spark.read."},{t:"method",v:"csv"},{t:"",v:"("},{t:"str",v:'"trades.csv"'},{t:"",v:", header="},{t:"kw",v:"True"},{t:"",v:", inferSchema="},{t:"kw",v:"True"},{t:"",v:")\n\n"},
+      {t:"cm",v:"# 看结构：列名 + 类型\n"},
+      {t:"",v:"df."},{t:"method",v:"printSchema"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# 看前5行\n"},
+      {t:"",v:"df."},{t:"method",v:"show"},{t:"",v:"("},{t:"num",v:"5"},{t:"",v:")\n\n"},
+      {t:"cm",v:"# 过滤：只要 buy 操作，且金额 > 1000\n"},
+      {t:"",v:"df_buy = df."},{t:"method",v:"filter"},{t:"",v:"(\n"},
+      {t:"",v:"    (col("},{t:"str",v:'"action"'},{t:"",v:") == "},{t:"str",v:'"buy"'},{t:"",v:") & (col("},{t:"str",v:'"amount"'},{t:"",v:") > "},{t:"num",v:"1000"},{t:"",v:")\n"},
+      {t:"",v:")\n"},
+      {t:"",v:"df_buy."},{t:"method",v:"show"},{t:"",v:"()"},
+    ],
+    sim:{
+      schema:["order_id","user_id","action","symbol","amount","price"],
+      data:[
+        [1001,"U01","buy","AAPL",5000,182.5],
+        [1002,"U02","sell","TSLA",800,245.0],
+        [1003,"U01","buy","GOOG",2000,141.2],
+        [1004,"U03","buy","MSFT",300,378.9],
+        [1005,"U02","buy","AAPL",1500,183.1],
+        [1006,"U04","sell","NVDA",4200,875.0],
+        [1007,"U03","buy","TSLA",1100,246.5],
+        [1008,"U01","sell","GOOG",950,142.0],
+      ],
+      steps:[
+        {label:"printSchema()",           desc:"显示列结构与数据类型", action:"schema"},
+        {label:"show(5)",                 desc:"显示前5行数据",        action:"head5"},
+        {label:"filter(buy & amount>1000)",desc:"过滤 buy 且金额>1000", action:"filter"},
+      ],
+    },
+    quiz:{
+      q:"想只保留 symbol 为 'AAPL' 的行，应该用哪个方法？",
+      opts:["df.select('AAPL')","df.filter(col('symbol') == 'AAPL')","df.groupBy('symbol')","df.show('AAPL')"],
+      ans:1,
+      explain:"filter() 用于行过滤，select() 用于列选择，groupBy() 用于聚合。",
+    },
+  },
+  {
+    id:2, title:"聚合与 GroupBy", icon:"🔢", desc:"统计、求和、排序",
+    theory:"GroupBy 是数据分析的核心操作。把相同 key 的行归到一组，然后对每组做统计（计数、求和、平均...）。这一步在 Spark 底层会触发 Shuffle——数据在节点间重新分布。",
+    keyPoints:[
+      "groupBy().agg() 是标准聚合写法",
+      "alias() 给结果列重命名",
+      "orderBy(col(...).desc()) 降序排列",
+      "GroupBy 触发 Shuffle，是性能瓶颈所在",
+    ],
+    code:[
+      {t:"kw",v:"from"},{t:"",v:" pyspark.sql.functions "},{t:"kw",v:"import"},{t:"",v:" col, sum, count, avg, round\n\n"},
+      {t:"cm",v:"# 按用户统计：交易次数、总金额、平均价格\n"},
+      {t:"",v:"result = df."},{t:"method",v:"groupBy"},{t:"",v:"("},{t:"str",v:'"user_id"'},{t:"",v:") \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"agg"},{t:"",v:"(\n"},
+      {t:"",v:"        count("},{t:"str",v:'"order_id"'},{t:"",v:")."},{t:"method",v:"alias"},{t:"",v:"("},{t:"str",v:'"trade_count"'},{t:"",v:"),\n"},
+      {t:"",v:"        sum("},{t:"str",v:'"amount"'},{t:"",v:")."},{t:"method",v:"alias"},{t:"",v:"("},{t:"str",v:'"total_amount"'},{t:"",v:"),\n"},
+      {t:"",v:"        round(avg("},{t:"str",v:'"price"'},{t:"",v:"), "},{t:"num",v:"2"},{t:"",v:")."},{t:"method",v:"alias"},{t:"",v:"("},{t:"str",v:'"avg_price"'},{t:"",v:")\n"},
+      {t:"",v:"    ) \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"orderBy"},{t:"",v:"(col("},{t:"str",v:'"total_amount"'},{t:"",v:")."},{t:"method",v:"desc"},{t:"",v:"())\n\n"},
+      {t:"",v:"result."},{t:"method",v:"show"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# 多维度 GroupBy：按用户+操作类型\n"},
+      {t:"",v:"pivot = df."},{t:"method",v:"groupBy"},{t:"",v:"("},{t:"str",v:'"user_id"'},{t:"",v:", "},{t:"str",v:'"action"'},{t:"",v:") \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"agg"},{t:"",v:"(count("},{t:"str",v:'"*"'},{t:"",v:")."},{t:"method",v:"alias"},{t:"",v:"("},{t:"str",v:'"cnt"'},{t:"",v:")) \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"orderBy"},{t:"",v:"("},{t:"str",v:'"user_id"'},{t:"",v:", "},{t:"str",v:'"action"'},{t:"",v:")\n\n"},
+      {t:"",v:"pivot."},{t:"method",v:"show"},{t:"",v:"()"},
+    ],
+    sim:{
+      schema:["order_id","user_id","action","symbol","amount","price"],
+      data:[
+        [1001,"U01","buy","AAPL",5000,182.5],
+        [1002,"U02","sell","TSLA",800,245.0],
+        [1003,"U01","buy","GOOG",2000,141.2],
+        [1004,"U03","buy","MSFT",300,378.9],
+        [1005,"U02","buy","AAPL",1500,183.1],
+        [1006,"U04","sell","NVDA",4200,875.0],
+        [1007,"U03","buy","TSLA",1100,246.5],
+        [1008,"U01","sell","GOOG",950,142.0],
+      ],
+      steps:[
+        {label:"groupBy('user_id')",        desc:"按 user_id 分组",   action:"groupby"},
+        {label:"agg(count, sum, avg)",       desc:"计算每组的统计值",  action:"agg"},
+        {label:"orderBy(total_amount desc)", desc:"按总金额降序",      action:"order"},
+      ],
+    },
+    quiz:{
+      q:"groupBy 操作在 Spark 底层会触发什么？",
+      opts:["Cache（缓存）","Shuffle（数据重新分布）","Broadcast（广播）","Checkpoint（检查点）"],
+      ans:1,
+      explain:"GroupBy 需要把相同 key 的数据汇集到同一个节点，这就是 Shuffle。Shuffle 是 Spark 中最昂贵的操作之一。",
+    },
+  },
+  {
+    id:3, title:"Join 操作", icon:"🔗", desc:"两张表合并，四种 Join 类型",
+    theory:"Join 是把两张表按共同的 key 拼在一起。Spark 支持 inner / left / right / full outer 四种。Join 也会触发 Shuffle（除非用 broadcast join 广播小表）。",
+    keyPoints:[
+      "join 默认是 inner join，需显式指定 how='left'",
+      "broadcast(小表) 可避免 Shuffle，是常见优化手段",
+      "Spark 自动 broadcast 阈值默认 10MB",
+    ],
+    code:[
+      {t:"kw",v:"from"},{t:"",v:" pyspark.sql.functions "},{t:"kw",v:"import"},{t:"",v:" broadcast\n\n"},
+      {t:"cm",v:"# 订单表（大表）\n"},
+      {t:"",v:"orders = spark."},{t:"method",v:"createDataFrame"},{t:"",v:"([\n"},
+      {t:"",v:"    ("},{t:"num",v:"1001"},{t:"",v:", "},{t:"str",v:'"U01"'},{t:"",v:", "},{t:"str",v:'"buy"'},{t:"",v:", "},{t:"str",v:'"AAPL"'},{t:"",v:", "},{t:"num",v:"5000"},{t:"",v:"),\n"},
+      {t:"",v:"    ("},{t:"num",v:"1002"},{t:"",v:", "},{t:"str",v:'"U02"'},{t:"",v:", "},{t:"str",v:'"sell"'},{t:"",v:", "},{t:"str",v:'"TSLA"'},{t:"",v:", "},{t:"num",v:"800"},{t:"",v:"),\n"},
+      {t:"",v:"    ("},{t:"num",v:"1003"},{t:"",v:", "},{t:"str",v:'"U03"'},{t:"",v:", "},{t:"str",v:'"buy"'},{t:"",v:", "},{t:"str",v:'"GOOG"'},{t:"",v:", "},{t:"num",v:"2000"},{t:"",v:"),\n"},
+      {t:"",v:"], ["},{t:"str",v:'"order_id"'},{t:"",v:","},{t:"str",v:'"user_id"'},{t:"",v:","},{t:"str",v:'"action"'},{t:"",v:","},{t:"str",v:'"symbol"'},{t:"",v:","},{t:"str",v:'"amount"'},{t:"",v:"])\n\n"},
+      {t:"cm",v:"# 用户信息表（小表）\n"},
+      {t:"",v:"users = spark."},{t:"method",v:"createDataFrame"},{t:"",v:"([\n"},
+      {t:"",v:"    ("},{t:"str",v:'"U01"'},{t:"",v:","},{t:"str",v:'"Alice"'},{t:"",v:","},{t:"str",v:'"VIP"'},{t:"",v:"),\n"},
+      {t:"",v:"    ("},{t:"str",v:'"U02"'},{t:"",v:","},{t:"str",v:'"Bob"'},{t:"",v:"  ,"},{t:"str",v:'"Normal"'},{t:"",v:"),\n"},
+      {t:"cm",v:"    # U03 故意不放进来，演示 left join\n"},
+      {t:"",v:"], ["},{t:"str",v:'"user_id"'},{t:"",v:","},{t:"str",v:'"name"'},{t:"",v:","},{t:"str",v:'"tier"'},{t:"",v:"])\n\n"},
+      {t:"cm",v:"# Inner Join：只保留两边都有的\n"},
+      {t:"",v:"inner = orders."},{t:"method",v:"join"},{t:"",v:"(users, on="},{t:"str",v:'"user_id"'},{t:"",v:", how="},{t:"str",v:'"inner"'},{t:"",v:")\n"},
+      {t:"",v:"inner."},{t:"method",v:"show"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# Left Join：保留左表所有行，右表没有则为 null\n"},
+      {t:"",v:"left = orders."},{t:"method",v:"join"},{t:"",v:"(users, on="},{t:"str",v:'"user_id"'},{t:"",v:", how="},{t:"str",v:'"left"'},{t:"",v:")\n"},
+      {t:"",v:"left."},{t:"method",v:"show"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# Broadcast Join：小表广播，避免 Shuffle（性能优化！）\n"},
+      {t:"",v:"fast = orders."},{t:"method",v:"join"},{t:"",v:"(broadcast(users), on="},{t:"str",v:'"user_id"'},{t:"",v:", how="},{t:"str",v:'"left"'},{t:"",v:")\n"},
+      {t:"",v:"fast."},{t:"method",v:"show"},{t:"",v:"()"},
+    ],
+    sim:{
+      schema:["order_id","user_id","action","symbol","amount"],
+      data:[
+        [1001,"U01","buy","AAPL",5000],
+        [1002,"U02","sell","TSLA",800],
+        [1003,"U03","buy","GOOG",2000],
+      ],
+      steps:[
+        {label:"inner join",       desc:"只保留 U01、U02（U03 无用户信息被丢弃）", action:"inner"},
+        {label:"left join",        desc:"保留所有订单，U03 的 name/tier 为 null",  action:"left"},
+        {label:"broadcast(users)", desc:"小表广播到每个节点，无需 Shuffle",         action:"broadcast"},
+      ],
+    },
+    quiz:{
+      q:"有一张 100 亿行的大表和一张 5000 行的小表做 Join，最优做法是？",
+      opts:[
+        "普通 inner join，让 Spark 自己决定",
+        "用 broadcast(小表)，避免大表 Shuffle",
+        "先把大表 repartition，再 join",
+        "用 union 代替 join",
+      ],
+      ans:1,
+      explain:"小表 broadcast 后发到每个节点，大表无需 Shuffle 就能完成 join，性能提升巨大。Spark 也有自动 broadcast 阈值（默认 10MB），超过需手动指定。",
+    },
+  },
+  {
+    id:4, title:"窗口函数", icon:"🪟", desc:"分组排名、滚动计算，不丢行",
+    theory:'窗口函数是"分组后对每行单独计算"——和 GroupBy 的区别：GroupBy 会把多行压缩成一行，窗口函数保留所有行，只是在旁边多加一列计算结果。适合：排名、累计、移动平均。',
+    keyPoints:[
+      "Window.partitionBy() 定义分组，orderBy() 定义排序",
+      "窗口函数不减少行数，这是和 GroupBy 的本质区别",
+      "lag() 获取上一行值，lead() 获取下一行值",
+      "rowsBetween() 定义窗口行范围",
+    ],
+    code:[
+      {t:"kw",v:"from"},{t:"",v:" pyspark.sql "},{t:"kw",v:"import"},{t:"",v:" Window\n"},
+      {t:"kw",v:"from"},{t:"",v:" pyspark.sql.functions "},{t:"kw",v:"import"},{t:"",v:" rank, sum, lag, col\n\n"},
+      {t:"cm",v:"# 定义窗口：按 user_id 分区，按 amount 降序排名\n"},
+      {t:"",v:"w_rank = Window."},{t:"method",v:"partitionBy"},{t:"",v:"("},{t:"str",v:'"user_id"'},{t:"",v:")."},{t:"method",v:"orderBy"},{t:"",v:"(col("},{t:"str",v:'"amount"'},{t:"",v:")."},{t:"method",v:"desc"},{t:"",v:"())\n\n"},
+      {t:"cm",v:"# 每个用户内部，按金额排名\n"},
+      {t:"",v:"df_ranked = df."},{t:"method",v:"withColumn"},{t:"",v:"("},{t:"str",v:'"rank_in_user"'},{t:"",v:", rank()."},{t:"method",v:"over"},{t:"",v:"(w_rank))\n"},
+      {t:"",v:"df_ranked."},{t:"method",v:"show"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# 累计金额（每个用户的累积消费）\n"},
+      {t:"",v:"w_cumsum = Window."},{t:"method",v:"partitionBy"},{t:"",v:"("},{t:"str",v:'"user_id"'},{t:"",v:") \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"orderBy"},{t:"",v:"("},{t:"str",v:'"order_id"'},{t:"",v:") \\\n"},
+      {t:"",v:"    ."},{t:"method",v:"rowsBetween"},{t:"",v:"(Window.unboundedPreceding, Window.currentRow)\n\n"},
+      {t:"",v:"df_cum = df."},{t:"method",v:"withColumn"},{t:"",v:"(\n"},
+      {t:"",v:"    "},{t:"str",v:'"cumulative_amount"'},{t:"",v:",\n"},
+      {t:"",v:"    sum("},{t:"str",v:'"amount"'},{t:"",v:")."},{t:"method",v:"over"},{t:"",v:"(w_cumsum)\n)\n"},
+      {t:"",v:"df_cum."},{t:"method",v:"show"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# lag()：获取上一行的值\n"},
+      {t:"",v:"w_lag = Window."},{t:"method",v:"partitionBy"},{t:"",v:"("},{t:"str",v:'"symbol"'},{t:"",v:")."},{t:"method",v:"orderBy"},{t:"",v:"("},{t:"str",v:'"order_id"'},{t:"",v:")\n"},
+      {t:"",v:"df_lag = df."},{t:"method",v:"withColumn"},{t:"",v:"("},{t:"str",v:'"prev_price"'},{t:"",v:", lag("},{t:"str",v:'"price"'},{t:"",v:", "},{t:"num",v:"1"},{t:"",v:")."},{t:"method",v:"over"},{t:"",v:"(w_lag))\n"},
+      {t:"",v:"df_lag."},{t:"method",v:"show"},{t:"",v:"()"},
+    ],
+    sim:{
+      schema:["order_id","user_id","action","symbol","amount","price"],
+      data:[
+        [1001,"U01","buy","AAPL",5000,182.5],
+        [1003,"U01","buy","GOOG",2000,141.2],
+        [1008,"U01","sell","GOOG",950,142.0],
+        [1005,"U02","buy","AAPL",1500,183.1],
+        [1002,"U02","sell","TSLA",800,245.0],
+      ],
+      steps:[
+        {label:"partitionBy('user_id')",    desc:"按用户分组，但不合并行",  action:"partition"},
+        {label:"rank().over(window)",       desc:"在每个用户内按金额排名",   action:"rank"},
+        {label:"sum().over(cumsum_window)", desc:"计算每个用户的累计金额",   action:"cumsum"},
+      ],
+    },
+    quiz:{
+      q:"窗口函数 vs GroupBy，最核心的区别是？",
+      opts:[
+        "窗口函数更慢，GroupBy 更快",
+        "窗口函数保留所有原始行，GroupBy 把多行压缩成一行",
+        "窗口函数只能做排名，GroupBy 可以求和",
+        "两者没有区别，只是语法不同",
+      ],
+      ans:1,
+      explain:"GroupBy 聚合后行数减少（N行 → 1行/组），窗口函数行数不变，只是新增计算列。这是选择它们的核心依据。",
+    },
+  },
+  {
+    id:5, title:"Spark SQL", icon:"🗄️", desc:"用 SQL 写 Spark，最直接",
+    theory:"如果你会 SQL，就会 Spark SQL。把 DataFrame 注册成临时视图，然后直接写 SQL。底层一样走 Catalyst 优化，性能和 DataFrame API 相同。",
+    keyPoints:[
+      "createOrReplaceTempView 注册临时视图，会话结束自动销毁",
+      "Spark SQL 和 DataFrame API 性能完全相同",
+      "复杂逻辑用 SQL 可读性更好，适合有 SQL 背景的团队",
+    ],
+    code:[
+      {t:"cm",v:"# 把 DataFrame 注册为临时视图\n"},
+      {t:"",v:"df."},{t:"method",v:"createOrReplaceTempView"},{t:"",v:"("},{t:"str",v:'"trades"'},{t:"",v:")\n\n"},
+      {t:"cm",v:"# 直接写 SQL！\n"},
+      {t:"",v:"result = spark."},{t:"method",v:"sql"},{t:"",v:"("},{t:"str",v:'"""'},{t:"",v:"\n"},
+      {t:"str",v:'    SELECT\n        user_id,\n        COUNT(*)             AS trade_count,\n        SUM(amount)          AS total_amount,\n        ROUND(AVG(price), 2) AS avg_price,\n        MAX(amount)          AS max_single_trade\n    FROM trades\n    WHERE action = \'buy\'\n    GROUP BY user_id\n    ORDER BY total_amount DESC\n'},{t:"",v:""},
+      {t:"str",v:'"""'},{t:"",v:")\n"},
+      {t:"",v:"result."},{t:"method",v:"show"},{t:"",v:"()\n\n"},
+      {t:"cm",v:"# 窗口函数也可以在 SQL 里写\n"},
+      {t:"",v:"spark."},{t:"method",v:"sql"},{t:"",v:"("},{t:"str",v:'"""'},{t:"",v:"\n"},
+      {t:"str",v:'    SELECT *,\n        RANK() OVER (\n            PARTITION BY user_id\n            ORDER BY amount DESC\n        ) AS rank_in_user\n    FROM trades\n'},{t:"",v:""},
+      {t:"str",v:'"""'},{t:"",v:")."},{t:"method",v:"show"},{t:"",v:"()"},
+    ],
+    sim:{
+      schema:["order_id","user_id","action","symbol","amount","price"],
+      data:[
+        [1001,"U01","buy","AAPL",5000,182.5],
+        [1002,"U02","sell","TSLA",800,245.0],
+        [1003,"U01","buy","GOOG",2000,141.2],
+        [1004,"U03","buy","MSFT",300,378.9],
+        [1005,"U02","buy","AAPL",1500,183.1],
+        [1006,"U04","sell","NVDA",4200,875.0],
+        [1007,"U03","buy","TSLA",1100,246.5],
+        [1008,"U01","sell","GOOG",950,142.0],
+      ],
+      steps:[
+        {label:"createOrReplaceTempView", desc:"把 DataFrame 注册为可查询的视图", action:"register"},
+        {label:"WHERE action = 'buy'",    desc:"只看 buy 记录",                    action:"sqlfilter"},
+        {label:"GROUP BY + ORDER BY",     desc:"按用户聚合，按总金额排序",          action:"sqlagg"},
+      ],
+    },
+    quiz:{
+      q:"Spark SQL 和 DataFrame API 的性能对比，正确的是？",
+      opts:[
+        "Spark SQL 更慢，因为要解析 SQL 字符串",
+        "DataFrame API 更快，因为是原生 API",
+        "两者经过 Catalyst 优化后性能相同",
+        "取决于数据量，小数据 SQL 快，大数据 API 快",
+      ],
+      ans:2,
+      explain:"两者最终都通过 Catalyst 优化器生成相同的物理执行计划，性能没有区别。选哪个看团队习惯和可读性。",
+    },
+  },
+];
+
+// ── state ──────────────────────────────────────────────────────────
+let currentIdx = 0;
+let currentTab = "code";
+let currentStep = -1;
+let currentSimResult = null;
+let selectedAns = null;
+let submitted = false;
+let done = new Set();
+
+// ── simulation engine ──────────────────────────────────────────────
+function simulate(lesson, action) {
+  const {schema, data} = lesson.sim;
+  const byUser = () => {
+    const g = {};
+    data.forEach(r => { (g[r[1]] = g[r[1]] || []).push(r); });
+    return g;
+  };
+  const userMap = Object.fromEntries(USERS.map(u => [u.user_id, u]));
+
+  if (action === "schema") {
+    const types = {order_id:"IntegerType",user_id:"StringType",action:"StringType",symbol:"StringType",amount:"DoubleType",price:"DoubleType"};
+    return {type:"schema", rows: schema.map(c => [c, types[c]||"StringType"])};
+  }
+  if (action === "head5")   return {type:"table", schema, rows: data.slice(0,5)};
+  if (action === "filter")  return {type:"table", schema, rows: data.filter(r=>r[2]==="buy"&&r[4]>1000), note:"action='buy' AND amount>1000"};
+  if (action === "groupby") return {type:"groups", groups: byUser(), note:"相同 user_id 的行归到一组"};
+  if (action === "agg" || action === "order") {
+    const g = byUser();
+    const rows = Object.entries(g).map(([uid,rs]) => [
+      uid, rs.length,
+      rs.reduce((s,r)=>s+r[4],0),
+      Math.round(rs.reduce((s,r)=>s+r[5],0)/rs.length*100)/100,
+    ]).sort((a,b)=>b[2]-a[2]);
+    return {type:"table", schema:["user_id","trade_count","total_amount","avg_price"], rows,
+      note: action==="order" ? "已按 total_amount 降序" : undefined};
+  }
+  if (action === "inner") {
+    const rows = data.filter(r=>userMap[r[1]]).map(r=>[...r, userMap[r[1]].name, userMap[r[1]].tier]);
+    return {type:"table", schema:[...schema,"name","tier"], rows, note:"U03 无对应用户信息，被丢弃"};
+  }
+  if (action === "left") {
+    const rows = data.map(r=>[...r, userMap[r[1]]?.name||"null", userMap[r[1]]?.tier||"null"]);
+    return {type:"table", schema:[...schema,"name","tier"], rows, note:"U03 保留，name/tier 为 null"};
+  }
+  if (action === "broadcast") return {type:"broadcast"};
+  if (action === "partition") return {type:"groups", groups: byUser(), note:"按 user_id 划分窗口，行数不减少"};
+  if (action === "rank") {
+    const g = byUser(); const rows = [];
+    Object.entries(g).forEach(([,rs]) => {
+      [...rs].sort((a,b)=>b[4]-a[4]).forEach((r,i) => rows.push([...r, i+1]));
+    });
+    return {type:"table", schema:[...schema,"rank_in_user"], rows};
+  }
+  if (action === "cumsum") {
+    const g = byUser(); const rows = [];
+    Object.entries(g).forEach(([,rs]) => {
+      let cum=0; rs.forEach(r => { cum+=r[4]; rows.push([...r, cum]); });
+    });
+    return {type:"table", schema:[...schema,"cumulative_amount"], rows};
+  }
+  if (action === "register") return {type:"msg", text:"✅ 已注册临时视图 'trades'，可直接用 spark.sql() 查询"};
+  if (action === "sqlfilter") return {type:"table", schema, rows: data.filter(r=>r[2]==="buy"), note:"WHERE action = 'buy'"};
+  if (action === "sqlagg") {
+    const g={};
+    data.filter(r=>r[2]==="buy").forEach(r=>{ (g[r[1]]=g[r[1]]||[]).push(r); });
+    const rows = Object.entries(g).map(([uid,rs]) => [
+      uid, rs.length, rs.reduce((s,r)=>s+r[4],0),
+      Math.round(rs.reduce((s,r)=>s+r[5],0)/rs.length*100)/100,
+      Math.max(...rs.map(r=>r[4])),
+    ]).sort((a,b)=>b[2]-a[2]);
+    return {type:"table", schema:["user_id","trade_count","total_amount","avg_price","max_single_trade"], rows};
+  }
+  return {type:"table", schema, rows: data};
+}
+
+// ── render helpers ─────────────────────────────────────────────────
+function cellColor(v, isNum) {
+  if (v === "null") return "c-red";
+  if (v === "buy")  return "c-green";
+  if (v === "sell") return "c-red";
+  if (isNum)        return "c-num";
+  return "";
+}
+
+function renderTable(schema, rows, note) {
+  let h = "";
+  if (note) h += `<div style="color:#d29922;font-size:11px;margin-bottom:6px">${note}</div>`;
+  h += `<div style="overflow-x:auto"><table><thead><tr>`;
+  schema.forEach(s => h += `<th>${s}</th>`);
+  h += `</tr></thead><tbody>`;
+  rows.forEach((row,i) => {
+    h += `<tr>`;
+    row.forEach(cell => {
+      const cls = cellColor(cell, typeof cell === "number");
+      h += `<td class="${cls}">${cell}</td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div>`;
+  return h;
+}
+
+function renderSimResult(r) {
+  if (!r) return "";
+  if (r.type === "schema") {
+    let h = `<div class="schema-root">root</div>`;
+    r.rows.forEach(([col,type]) => {
+      h += `<div class="schema-row"><span class="c-dim"> |--</span><span class="c-cyan">${col}</span><span class="c-muted"> : </span><span class="c-purple">${type}</span></div>`;
+    });
+    return h;
+  }
+  if (r.type === "groups") {
+    let h = r.note ? `<div style="color:#d29922;font-size:11px;margin-bottom:8px">${r.note}</div>` : "";
+    Object.entries(r.groups).forEach(([uid, rs]) => {
+      h += `<div class="group-box"><div class="group-title">分组：${uid}</div>`;
+      rs.forEach(row => {
+        h += `<div class="group-row">`;
+        row.forEach(v => {
+          const cls = v==="buy"?"c-green":v==="sell"?"c-red":typeof v==="number"?"c-num":"";
+          h += `<span class="group-cell ${cls}">${v}</span>`;
+        });
+        h += `</div>`;
+      });
+      h += `</div>`;
+    });
+    return h;
+  }
+  if (r.type === "msg") return `<div class="c-green" style="font-size:13px">${r.text}</div>`;
+  if (r.type === "broadcast") return `
+    <div class="broadcast-wrap">
+      <div class="broadcast-note">users 表（3行）广播到所有节点，orders 大表无需 Shuffle</div>
+      <div class="broadcast-nodes">
+        <div class="bcast-source">
+          <div class="c-cyan" style="font-weight:700">users</div>
+          <div class="c-muted" style="font-size:11px">3 行 · 小表</div>
+          <div class="c-green" style="margin-top:4px">📡 广播</div>
+        </div>
+        <div class="bcast-arrow">→</div>
+        <div class="bcast-node"><div>Node 1</div><div class="c-green" style="font-size:11px;margin-top:4px">✓ 已有 users</div></div>
+        <div class="bcast-node"><div>Node 2</div><div class="c-green" style="font-size:11px;margin-top:4px">✓ 已有 users</div></div>
+        <div class="bcast-node"><div>Node 3</div><div class="c-green" style="font-size:11px;margin-top:4px">✓ 已有 users</div></div>
+      </div>
+      <div class="broadcast-sub">大表 orders 无需移动，直接在各节点 join</div>
+    </div>`;
+  if (r.type === "table") return renderTable(r.schema, r.rows, r.note);
+  return "";
+}
+
+function renderCode(tokens) {
+  return tokens.map(tk => {
+    const cls = tk.t || "";
+    const txt = tk.v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return cls ? `<span class="${cls}">${txt}</span>` : txt;
+  }).join("");
+}
+
+// ── main render ────────────────────────────────────────────────────
+function render() {
+  const lesson = LESSONS[currentIdx];
+
+  // sidebar
+  let sidebarHtml = "";
+  LESSONS.forEach((l, i) => {
+    const active = i === currentIdx ? "active" : "";
+    const check  = done.has(l.id) ? `<span class="s-check">✓</span>` : "";
+    sidebarHtml += `
+      <button class="sidebar-item ${active}" onclick="switchLesson(${i})">
+        <div class="s-top"><span class="s-icon">${l.icon}</span>${check}</div>
+        <div class="s-title">${l.title}</div>
+        <div class="s-desc">${l.desc}</div>
+      </button>`;
+  });
+  document.getElementById("sidebar").innerHTML = sidebarHtml;
+
+  // lesson header
+  document.getElementById("lesson-icon").textContent = lesson.icon;
+  document.getElementById("lesson-title").textContent = lesson.title;
+  document.getElementById("lesson-theory").textContent = lesson.theory;
+
+  // tabs active state
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === currentTab);
+  });
+
+  // progress
+  const pct = Math.round(done.size / LESSONS.length * 100);
+  document.getElementById("progress-label").textContent = `${done.size}/${LESSONS.length} 完成`;
+  document.getElementById("progress-bar").style.width = pct + "%";
+  document.getElementById("progress-pct").textContent = pct + "%";
+
+  // content
+  let html = "";
+  if (currentTab === "code") {
+    html = `
+      <div class="copy-row">
+        <span class="section-label">PySpark 代码</span>
+        <button id="copy-btn" onclick="copyCode()">复制</button>
+      </div>
+      <div class="code-wrap">
+        <div class="code-titlebar">
+          <div class="dot" style="background:#f85149"></div>
+          <div class="dot" style="background:#d29922"></div>
+          <div class="dot" style="background:#3fb950"></div>
+          <span class="code-filename">spark_demo.py</span>
+        </div>
+        <pre id="code-pre">${renderCode(lesson.code)}</pre>
+      </div>
+      <div class="key-points">
+        <div class="key-points-title">💡 核心要点</div>
+        ${lesson.keyPoints.map(p=>`<div class="key-point"><span class="arrow">›</span><span>${p}</span></div>`).join("")}
+      </div>`;
+  }
+
+  else if (currentTab === "sim") {
+    const stepsHtml = lesson.sim.steps.map((s,i) => `
+      <button class="step-btn ${currentStep===i?"active":""}" onclick="handleStep(${i})">
+        <div class="sl">${s.label}</div>
+        <div class="sd">${s.desc}</div>
+      </button>`).join("");
+
+    const resultHtml = currentSimResult
+      ? `<div><div class="result-label">执行结果</div><div class="result-box">${renderSimResult(currentSimResult)}</div></div>`
+      : `<div class="sim-placeholder">👆 点击上方步骤，查看每一步的执行结果</div>`;
+
+    html = `
+      <div class="sim-wrap">
+        <div class="section-label">点击步骤，看 Spark 怎么执行</div>
+        <div class="source-box">
+          <div class="source-label">源数据</div>
+          ${renderTable(lesson.sim.schema, lesson.sim.data)}
+        </div>
+        <div class="steps-row">${stepsHtml}</div>
+        ${resultHtml}
+      </div>`;
+  }
+
+  else if (currentTab === "quiz") {
+    const q = lesson.quiz;
+    const optsHtml = q.opts.map((opt,i) => {
+      let cls = "";
+      if (submitted) {
+        if (i === q.ans) cls = "correct";
+        else if (i === selectedAns) cls = "wrong";
+        else cls = "dimmed";
+      } else if (i === selectedAns) cls = "selected";
+      return `<button class="quiz-opt ${cls}" onclick="selectAns(${i})" ${submitted?"disabled":""}><span class="quiz-letter">${String.fromCharCode(65+i)}.</span>${opt}</button>`;
+    }).join("");
+
+    const submitCls = selectedAns !== null ? "active" : "inactive";
+    let afterHtml = "";
+    if (submitted) {
+      const correct = selectedAns === q.ans;
+      afterHtml = `<div class="quiz-result ${correct?"correct":"wrong"}">
+        <div class="quiz-result-title">${correct?"✓ 回答正确！":"✗ 答错了"}</div>
+        <div class="quiz-result-exp">${q.explain}</div>
+      </div>`;
+      if (currentIdx < LESSONS.length - 1) {
+        afterHtml += `<button id="next-btn" onclick="nextLesson()">下一课：${LESSONS[currentIdx+1].title} →</button>`;
+      } else {
+        afterHtml += `<div class="complete-banner">🎉 全部课程完成！${done.size}/${LESSONS.length} 答题正确</div>`;
+      }
+    }
+
+    html = `
+      <div class="quiz-wrap">
+        <div class="section-label" style="margin-bottom:14px">本节测验</div>
+        <div class="quiz-box">
+          <div class="quiz-q">${q.q}</div>
+          <div class="quiz-options">${optsHtml}</div>
+          ${!submitted ? `<button id="submit-btn" class="${submitCls}" onclick="submitQuiz()">提交答案</button>` : ""}
+          ${submitted ? afterHtml.split('\n').filter(l=>l.includes('quiz-result')||l.includes('result-title')||l.includes('result-exp')||l.includes('</div>')).join('\n') : ""}
+        </div>
+        ${submitted ? afterHtml : ""}
+      </div>`;
+
+    // simpler rebuild for quiz
+    html = `
+      <div class="quiz-wrap">
+        <div class="section-label" style="margin-bottom:14px">本节测验</div>
+        <div class="quiz-box">
+          <div class="quiz-q">${q.q}</div>
+          <div class="quiz-options">${optsHtml}</div>
+          ${!submitted
+            ? `<button id="submit-btn" class="${submitCls}" onclick="submitQuiz()">提交答案</button>`
+            : `<div class="quiz-result ${selectedAns===q.ans?"correct":"wrong"}">
+                <div class="quiz-result-title">${selectedAns===q.ans?"✓ 回答正确！":"✗ 答错了"}</div>
+                <div class="quiz-result-exp">${q.explain}</div>
+               </div>`
+          }
+        </div>
+        ${submitted && currentIdx < LESSONS.length-1
+          ? `<button id="next-btn" onclick="nextLesson()">下一课：${LESSONS[currentIdx+1].title} →</button>`
+          : ""}
+        ${submitted && currentIdx === LESSONS.length-1
+          ? `<div class="complete-banner">🎉 全部课程完成！${done.size}/${LESSONS.length} 答题正确</div>`
+          : ""}
+      </div>`;
+  }
+
+  document.getElementById("content").innerHTML = html;
+}
+
+// ── event handlers ─────────────────────────────────────────────────
+function switchLesson(i) {
+  currentIdx = i; currentTab = "code"; currentStep = -1;
+  currentSimResult = null; selectedAns = null; submitted = false;
+  render();
+}
+
+function handleStep(i) {
+  currentStep = i;
+  currentSimResult = simulate(LESSONS[currentIdx], LESSONS[currentIdx].sim.steps[i].action);
+  render();
+}
+
+function selectAns(i) {
+  if (submitted) return;
+  selectedAns = i; render();
+}
+
+function submitQuiz() {
+  if (selectedAns === null) return;
+  submitted = true;
+  if (selectedAns === LESSONS[currentIdx].quiz.ans) done.add(LESSONS[currentIdx].id);
+  render();
+}
+
+function nextLesson() { switchLesson(currentIdx + 1); }
+
+function copyCode() {
+  const raw = LESSONS[currentIdx].code.map(t=>t.v).join("");
+  navigator.clipboard.writeText(raw).then(() => {
+    const btn = document.getElementById("copy-btn");
+    if (btn) { btn.textContent = "✓ 已复制"; btn.style.color="#3fb950"; setTimeout(()=>{ btn.textContent="复制"; btn.style.color=""; }, 1500); }
+  });
+}
+
+// tabs
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    currentTab = btn.dataset.tab;
+    if (currentTab !== "sim") { currentStep=-1; currentSimResult=null; }
+    render();
+  });
+});
+
+// init
+render();
+</script>
+</body>
+</html>
