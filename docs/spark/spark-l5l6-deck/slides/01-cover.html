@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#000000;
+    --white:#FFFFFF;
+    --accent:#FF6B2C;
+    --dim:rgba(255,255,255,0.45);
+    --dimmer:rgba(255,255,255,0.28);
+    --line:rgba(255,255,255,0.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    width:1920px;height:1080px;margin:0;overflow:hidden;
+    background:var(--black);color:var(--white);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    position:relative;
+  }
+  /* stage spotlight: subtle radial vignette, no neon */
+  .stage{
+    position:absolute;inset:0;
+    background:radial-gradient(120% 100% at 30% 38%, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 32%, rgba(0,0,0,0) 62%);
+  }
+  .vignette{
+    position:absolute;inset:0;
+    background:radial-gradient(140% 120% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%);
+  }
+  .wrap{
+    position:absolute;inset:0;
+    padding:120px 140px;
+    display:flex;flex-direction:column;justify-content:center;
+  }
+  .kicker{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:500;font-size:24px;letter-spacing:0.32em;
+    text-transform:uppercase;color:var(--accent);
+    display:flex;align-items:center;gap:22px;
+    margin-bottom:64px;
+  }
+  .kicker .tick{
+    width:54px;height:2px;background:var(--accent);display:inline-block;
+  }
+  .course{
+    font-size:30px;font-weight:600;color:var(--dim);
+    letter-spacing:0.02em;margin-bottom:34px;
+  }
+  .title{
+    font-weight:900;
+    font-size:188px;line-height:0.92;
+    letter-spacing:-0.04em;
+  }
+  .title .l2{display:block;}
+  .title .x{
+    color:var(--accent);
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    font-size:150px;vertical-align:middle;
+    margin:0 14px;letter-spacing:-0.02em;
+  }
+  .sub{
+    margin-top:52px;
+    font-family:'JetBrains Mono',monospace;font-weight:500;
+    font-size:30px;letter-spacing:0.04em;color:var(--dim);
+  }
+  .sub .dot{color:var(--accent);margin:0 14px;}
+  footer{
+    position:absolute;left:140px;right:140px;bottom:64px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:'JetBrains Mono',monospace;font-size:20px;
+    letter-spacing:0.12em;color:var(--dimmer);
+    padding-top:30px;border-top:1px solid var(--line);
+  }
+  footer .pg{color:var(--white);}
+</style>
+</head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="kicker"><span class="tick"></span>大数据工具课 · L5–L6</div>
+    <div class="course">Spark 实战 · 第 5–6 课</div>
+    <h1 class="title">
+      Spark SQL 实战<span class="x">&times;</span>
+      <span class="l2">性能调优</span>
+    </h1>
+    <div class="sub">Spark SQL in Practice <span class="dot">·</span> Performance Tuning</div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>bigdata-tools · 课程材料</span>
+    <span class="pg">01</span>
+  </footer>
+</body>
+</html>

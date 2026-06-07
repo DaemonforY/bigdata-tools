@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  /* 上半：四种 join 横排 */
+  .types{
+    margin-top:40px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:26px;
+  }
+  .jt{
+    border:1px solid var(--line);border-top:3px solid var(--faint);
+    padding:26px 28px 28px;display:flex;flex-direction:column;gap:14px;
+    background:rgba(255,255,255,0.02);
+  }
+  .jt.key{border-top-color:var(--accent);background:rgba(255,107,44,0.05);}
+  .jt .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
+    color:var(--dimmer);letter-spacing:0.14em;
+  }
+  .jt .name{
+    font-weight:900;font-size:44px;letter-spacing:-0.03em;line-height:1;
+    color:var(--white);
+  }
+  .jt.key .name{color:var(--accent);}
+  .jt .en{
+    font-family:'JetBrains Mono',monospace;font-weight:500;font-size:19px;
+    color:var(--dim);letter-spacing:0.04em;
+  }
+  .jt .desc{
+    font-size:24px;line-height:1.42;color:rgba(255,255,255,0.82);font-weight:400;
+    margin-top:4px;
+  }
+  /* venn 小图 */
+  .venn{display:flex;align-items:center;gap:-12px;height:38px;margin-top:2px;}
+  .venn span{
+    width:38px;height:38px;border:2px solid var(--dimmer);border-radius:50%;
+    display:block;
+  }
+  .venn span+span{margin-left:-14px;}
+  .venn .f{background:rgba(255,107,44,0.22);border-color:var(--accent);}
+
+  /* 下半：代码 */
+  .codewrap{margin-top:40px;}
+  .codetag{
+    font-family:'JetBrains Mono',monospace;font-size:19px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:14px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .codetag::before{content:"";width:34px;height:2px;background:var(--accent);}
+  .code{font-size:25px;line-height:1.7;}
+  .code .hl{
+    color:var(--accent);font-weight:700;
+    background:rgba(255,107,44,0.12);padding:0 4px;border-radius:3px;
+  }
+
+  /* 底部橙条 */
+  .punch{
+    margin-top:34px;display:flex;align-items:center;gap:22px;
+    font-size:30px;font-weight:700;letter-spacing:-0.01em;
+  }
+  .punch .bolt{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px;
+    color:var(--black);background:var(--accent);padding:6px 16px;flex:none;
+    letter-spacing:0.1em;
+  }
+  .punch b{color:var(--accent);font-weight:800;}
+  .punch .arr{color:var(--accent);font-weight:900;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>Join 操作</h1>
+      <span class="en">Four Types + Broadcast</span>
+    </div>
+    <div class="lead">两张表按共同 key 拼接 —— Join 也会触发 Shuffle，除非<b>广播小表</b>。</div>
+
+    <div class="types">
+      <div class="jt">
+        <div class="ix">01 / INNER</div>
+        <div class="name">inner</div>
+        <div class="venn"><span class="f"></span><span class="f"></span></div>
+        <div class="desc">只保留两边都有的</div>
+      </div>
+      <div class="jt">
+        <div class="ix">02 / LEFT</div>
+        <div class="name">left</div>
+        <div class="venn"><span class="f"></span><span></span></div>
+        <div class="desc">保留左表所有行，右表缺则 null</div>
+      </div>
+      <div class="jt">
+        <div class="ix">03 / RIGHT</div>
+        <div class="name">right</div>
+        <div class="venn"><span></span><span class="f"></span></div>
+        <div class="desc">保留右表所有行</div>
+      </div>
+      <div class="jt">
+        <div class="ix">04 / FULL</div>
+        <div class="name">full outer</div>
+        <div class="venn"><span class="f"></span><span class="f"></span></div>
+        <div class="desc">两边都保留</div>
+      </div>
+    </div>
+
+    <div class="codewrap">
+      <div class="codetag">broadcast_join.py</div>
+<div class="code"><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> <span class="hl">broadcast</span>
+<span class="cm"># orders（100亿行）JOIN users（5000行）—— 小表直接广播</span>
+fast <span class="op">=</span> orders.<span class="fn">join</span>(<span class="hl">broadcast</span>(users), on<span class="op">=</span><span class="str">"user_id"</span>, how<span class="op">=</span><span class="str">"left"</span>)
+<span class="cm"># 自动广播阈值默认 10MB</span>
+spark.conf.<span class="fn">set</span>(<span class="str">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="str">"50m"</span>)</div>
+    </div>
+
+    <div class="punch">
+      <span class="bolt">BROADCAST</span>
+      <span>小表 <b>broadcast 到每个节点</b> <span class="arr">→</span> 大表零 Shuffle，性能提升巨大。</span>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · Join 四型 + Broadcast</span>
+    <span class="pg">07</span>
+  </footer>
+</body></html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>数据倾斜 → 加盐修复</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0E14;
+    --ink:#F4F7FB;
+    --dim:rgba(244,247,251,0.46);
+    --dimmer:rgba(244,247,251,0.26);
+    --line:rgba(244,247,251,0.10);
+    --hot:#FF3B5C;        /* 告警红：倾斜 */
+    --salt:#36E0FF;       /* 青：加盐魔法 */
+    --good:#27E08A;       /* 饱和绿：健康/均衡 */
+    --gold:#FFC53D;       /* 强调点缀 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{margin:0;background:#000;}
+  /* 画布 1600×900，舞台居中 */
+  #stage{
+    position:relative;width:1600px;height:900px;overflow:hidden;
+    background:
+      radial-gradient(130% 120% at 50% 30%, rgba(54,224,255,0.05) 0%, rgba(0,0,0,0) 48%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter','PingFang SC',system-ui,sans-serif;
+    font-variant-numeric:tabular-nums;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* 极淡网格地纹 */
+  #stage::before{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:80px 80px;opacity:0.5;
+    mask:radial-gradient(120% 100% at 50% 45%,#000 30%,transparent 80%);
+  }
+  .vignette{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(150% 130% at 50% 50%,rgba(0,0,0,0) 56%,rgba(0,0,0,0.7) 100%);}
+
+  /* ── 标题区 ── */
+  .titlebar{position:absolute;left:96px;top:74px;}
+  .kick{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:22px;
+    letter-spacing:0.3em;text-transform:uppercase;color:var(--salt);
+    display:flex;align-items:center;gap:18px;}
+  .kick .tick{width:46px;height:2px;background:var(--salt);display:inline-block;}
+  .htitle{margin-top:20px;font-weight:900;font-size:62px;letter-spacing:-0.03em;line-height:1;}
+  .htitle .en{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:26px;
+    color:var(--dim);letter-spacing:0.04em;margin-left:18px;}
+  /* phase 文字切换 */
+  .phase{position:absolute;left:96px;top:178px;font-size:30px;font-weight:600;
+    color:rgba(244,247,251,0.9);letter-spacing:-0.01em;height:42px;}
+  .phase b.hot{color:var(--hot);font-weight:800;}
+  .phase b.salt{color:var(--salt);font-weight:800;}
+  .phase b.good{color:var(--good);font-weight:800;}
+
+  /* ── Task 横条图 ── */
+  #chart{position:absolute;left:96px;top:288px;width:1010px;}
+  .row{display:flex;align-items:center;gap:22px;height:46px;margin-bottom:14px;}
+  .row .lbl{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--dimmer);
+    width:96px;flex:none;text-align:right;letter-spacing:0.04em;}
+  .row .track{flex:1;height:34px;position:relative;background:rgba(255,255,255,0.04);
+    border-radius:3px;overflow:visible;}
+  .row .fill{position:absolute;left:0;top:0;height:100%;border-radius:3px;width:0%;
+    transform-origin:left center;}
+  .fill.ok{background:var(--good);box-shadow:0 0 16px rgba(39,224,138,0.25);}
+  .fill.bad{background:var(--hot);box-shadow:0 0 26px rgba(255,59,92,0.4);}
+  .row .val{font-family:'JetBrains Mono',monospace;font-size:20px;width:96px;flex:none;
+    opacity:0;transition:opacity .3s;}
+  .val.ok{color:var(--good);} .val.bad{color:var(--hot);font-weight:700;}
+  .row.hotrow .lbl{color:var(--ink);}
+  .row.hotrow .track{height:40px;}
+
+  /* ── 加盐粒子层 ── */
+  #saltfx{position:absolute;left:96px;top:288px;width:1010px;height:520px;
+    pointer-events:none;}
+  .grain{position:absolute;width:30px;height:30px;border-radius:5px;
+    background:var(--salt);box-shadow:0 0 18px rgba(54,224,255,0.6);
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    color:#06222B;display:flex;align-items:center;justify-content:center;
+    opacity:0;will-change:transform,opacity;}
+
+  /* ── 右侧 BOT key 大块（倾斜源）── */
+  #botkey{position:absolute;left:1180px;top:300px;width:320px;opacity:0;}
+  .botbox{border:2px solid var(--hot);border-radius:10px;padding:24px 26px;
+    background:rgba(255,59,92,0.06);box-shadow:0 0 40px rgba(255,59,92,0.15);}
+  .botbox .name{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:30px;
+    color:var(--hot);letter-spacing:0.02em;}
+  .botbox .meta{margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--dim);}
+  .botbox .barwrap{margin-top:18px;height:14px;background:rgba(255,255,255,0.06);border-radius:7px;overflow:hidden;}
+  .botbox .barfill{height:100%;width:90%;background:var(--hot);border-radius:7px;}
+  .botbox .pct{margin-top:10px;font-weight:900;font-size:46px;color:var(--hot);letter-spacing:-0.03em;}
+  .botbox .pct small{font-size:22px;font-weight:600;color:var(--dim);margin-left:8px;font-family:'JetBrains Mono',monospace;}
+
+  /* ── 加盐拆解：BOT → BOT_0..9 ── */
+  #saltsplit{position:absolute;left:1140px;top:300px;width:380px;opacity:0;}
+  .salthdr{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;
+    color:var(--salt);letter-spacing:0.04em;margin-bottom:16px;}
+  .saltgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+  .saltcell{border:1.5px solid var(--salt);border-radius:6px;padding:10px 4px;text-align:center;
+    background:rgba(54,224,255,0.06);font-family:'JetBrains Mono',monospace;
+    font-weight:700;font-size:15px;color:var(--salt);opacity:0;transform:scale(0.6);}
+
+  /* ── 结尾落幅 ── */
+  #finale{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;opacity:0;pointer-events:none;}
+  #finale .big{font-weight:900;font-size:96px;letter-spacing:-0.04em;}
+  #finale .big .g{color:var(--good);}
+  #finale .en{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:30px;
+    color:var(--dim);letter-spacing:0.18em;margin-top:18px;text-transform:uppercase;}
+  #finale .row2{margin-top:34px;display:flex;gap:48px;font-family:'JetBrains Mono',monospace;
+    font-size:24px;color:var(--dim);}
+  #finale .row2 b{color:var(--good);font-weight:700;}
+
+  /* watermark（动画产出默认带，可传播）*/
+  .wm{position:absolute;bottom:30px;right:44px;font-size:13px;
+    color:rgba(244,247,251,0.32);letter-spacing:0.15em;font-family:'JetBrains Mono',monospace;
+    pointer-events:none;z-index:100;}
+
+  /* ── chrome（录屏时隐藏）── */
+  #chrome{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:14px;
+    padding:12px 20px;background:rgba(0,0,0,0.6);font-family:'JetBrains Mono',monospace;
+    font-size:13px;color:var(--dim);z-index:9999;}
+  #chrome .pp{cursor:pointer;color:var(--salt);user-select:none;}
+  #chrome .scrub{flex:1;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;cursor:pointer;position:relative;}
+  #chrome .scrubfill{position:absolute;left:0;top:0;height:100%;background:var(--salt);border-radius:2px;width:0%;}
+  #chrome .tc{width:108px;text-align:right;}
+
+  /* 居中容器（浏览器里自适应缩放） */
+  #fit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000;}
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="stage">
+    <div class="titlebar">
+      <div class="kick"><span class="tick"></span>Spark · 性能调优</div>
+      <div class="htitle">数据倾斜<span class="en">Data Skew → Salting</span></div>
+    </div>
+    <div class="phase" id="phase"></div>
+
+    <div id="chart"></div>
+    <div id="saltfx"></div>
+
+    <!-- 倾斜源 BOT key -->
+    <div id="botkey">
+      <div class="botbox">
+        <div class="name">user_id = BOT</div>
+        <div class="meta">// 爬虫账号</div>
+        <div class="barwrap"><div class="barfill"></div></div>
+        <div class="pct">90%<small>of all data</small></div>
+      </div>
+    </div>
+
+    <!-- 加盐拆解 -->
+    <div id="saltsplit">
+      <div class="salthdr">+ SALT → 打散成 10 份</div>
+      <div class="saltgrid" id="saltgrid"></div>
+    </div>
+
+    <!-- 落幅 -->
+    <div id="finale">
+      <div class="big">负载<span class="g">均衡</span></div>
+      <div class="en">Balanced · Skew Resolved</div>
+      <div class="row2"><span>倾斜 <b style="color:var(--hot)">47min</b></span><span>→</span><span>加盐后 <b>~3s</b></span></div>
+    </div>
+
+    <div class="wm">Created by Huashu-Design</div>
+    <div class="vignette"></div>
+  </div>
+</div>
+
+<!-- chrome：录屏时自动隐藏 -->
+<div id="chrome" class="no-record">
+  <span class="pp" id="pp">❚❚</span>
+  <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
+  <span class="tc" id="tc">0.0 / 16.0</span>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  数据倾斜 → 加盐修复 · 纯 CSS+JS 单文件动画
+//  套 huashu-design starter tick 模板（坑 #12/#13 防御）
+// ══════════════════════════════════════════════════════════
+const DURATION = 16;
+const NTASK = 8;            // task 01..08，08 是倾斜 task
+const HOT = NTASK - 1;      // 索引 7
+
+// ── easing ──
+const expoOut   = t => t>=1?1:1-Math.pow(2,-10*t);
+const easeInOut = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+const clamp01   = t => t<0?0:t>1?1:t;
+// 区间内归一化 + easing
+function seg(t,a,b,ease){ if(t<=a)return 0; if(t>=b)return 1; const x=(t-a)/(b-a); return ease?ease(x):x; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+// ── 构建 DOM ──
+const chart = document.getElementById('chart');
+const rows = [];
+const normalTimes = ['1s','2s','1s','1s','2s','1s','1s'];   // 7 个正常 task 的耗时
+for(let i=0;i<NTASK;i++){
+  const isHot = i===HOT;
+  const r = document.createElement('div');
+  r.className = 'row' + (isHot?' hotrow':'');
+  r.innerHTML = `<span class="lbl">task ${String(i+1).padStart(2,'0')}</span>
+    <div class="track"><div class="fill ${isHot?'bad':'ok'}"></div></div>
+    <span class="val ${isHot?'bad':'ok'}"></span>`;
+  chart.appendChild(r);
+  rows.push({el:r, fill:r.querySelector('.fill'), val:r.querySelector('.val'), isHot});
+}
+
+// 加盐网格 BOT_0..BOT_9
+const saltgrid = document.getElementById('saltgrid');
+const saltcells = [];
+for(let i=0;i<10;i++){
+  const c=document.createElement('div'); c.className='saltcell'; c.textContent='BOT_'+i;
+  saltgrid.appendChild(c); saltcells.push(c);
+}
+
+// 加盐粒子（从 BOT 飞向各 task）
+const saltfx = document.getElementById('saltfx');
+const grains = [];
+for(let i=0;i<10;i++){
+  const g=document.createElement('div'); g.className='grain'; g.textContent='_'+i;
+  saltfx.appendChild(g); grains.push(g);
+}
+
+const phaseEl = document.getElementById('phase');
+const botkey  = document.getElementById('botkey');
+const saltsplit = document.getElementById('saltsplit');
+const finale  = document.getElementById('finale');
+
+// 粒子目标：均匀分布到 chart 各行的 y（让"打散到不同 task"可见）
+const grainTargets = grains.map((_,i)=>({ x: lerp(120, 920, (i%5)/4), y: lerp(20, 470, Math.floor(i/5)*0.55 + (i%5)*0.09) }));
+
+// ── 主渲染：纯函数 render(t) ──
+function render(t){
+  // ===== S1 触发 (0–2.5)：正常 task 快速归位，倾斜 task 卡住缓慢生长 =====
+  // ===== S2 问题 (2.5–5)：红条爆到满，BOT key 浮现 =====
+  // ===== S3 加盐 (5–10.5)：BOT 拆 10 份，粒子飞散 =====
+  // ===== S4 均衡 (10.5–14)：所有条重新均匀生长 =====
+  // ===== S5 落幅 (14–16)：finale =====
+
+  const inSalt   = t>=5 && t<10.5;
+  const inRebal  = t>=10.5 && t<14;
+  const inFinale = t>=14;
+
+  // phase 文案
+  let ph='';
+  if(t<2.5)        ph=`99 个 Task 秒完成，<b class="hot">第 100 个还在跑</b>…`;
+  else if(t<5)     ph=`<b class="hot">数据倾斜</b>：一个 key 扛了 90% 的数据`;
+  else if(t<10.5)  ph=`<b class="salt">加盐打散</b>：给倾斜 key 加随机后缀，拆成 10 份`;
+  else if(t<14)    ph=`分散到 10 个 Task <b class="salt">并行处理</b> → 负载重新均衡`;
+  else             ph=`<b class="good">修复完成</b>`;
+  if(phaseEl.dataset.t!==ph){ phaseEl.innerHTML=ph; phaseEl.dataset.t=ph; }
+
+  // ── Task 条 ──
+  rows.forEach((r,i)=>{
+    if(r.isHot){
+      let w, valTxt, valShow;
+      if(t<2.5){           // 缓慢生长（卡住感）
+        w = lerp(8, 34, seg(t,0.3,2.5,easeInOut));
+        valTxt='…'; valShow = t>1.2;
+      } else if(t<10.5){   // 爆满 + 保持
+        w = lerp(34, 100, seg(t,2.5,3.4,expoOut));
+        valTxt='47min'; valShow=true;
+      } else if(inRebal){  // 修复：回落到均匀短条
+        w = lerp(100, 7, seg(t,10.5,12.6,expoOut));
+        valTxt = seg(t,10.5,12.6)>0.6 ? '3s' : '47min';
+        valShow=true;
+        // 颜色从红切到绿
+        const k = seg(t,11.4,12.8,easeInOut);
+        r.fill.style.background = k>0 ? `color-mix(in oklab, var(--hot) ${(1-k)*100}%, var(--good))` : 'var(--hot)';
+        r.fill.style.boxShadow = k>0.5 ? '0 0 16px rgba(39,224,138,0.25)' : '0 0 26px rgba(255,59,92,0.4)';
+        r.val.className = 'val '+(k>0.6?'ok':'bad');
+      } else if(inFinale){
+        w=7; valTxt='3s'; valShow=true;
+        r.fill.style.background='var(--good)'; r.val.className='val ok';
+      }
+      r.fill.style.width = w+'%';
+      r.val.style.opacity = valShow?1:0;
+      if(t<10.5){ r.fill.style.background='var(--hot)'; r.val.className='val bad'; }
+      r.val.textContent = valTxt;
+    } else {
+      // 正常 task：S1 里依次快速归位
+      const delay = 0.15 + i*0.12;
+      const w = lerp(0, [4,6,5,5,7,5,5][i], seg(t, delay, delay+0.7, expoOut)) ;
+      r.fill.style.width = w+'%';
+      r.val.textContent = normalTimes[i];
+      r.val.style.opacity = seg(t, delay+0.5, delay+0.9)>0.4 ? 1 : 0;
+    }
+  });
+
+  // ── 倾斜源 BOT key（S2 浮现，S3 让位给拆解）──
+  const botIn  = seg(t,3.2,4.2,expoOut);
+  const botOut = seg(t,5.0,5.8,expoOut);
+  botkey.style.opacity = clamp01(botIn - botOut);
+  botkey.style.transform = `translateY(${lerp(24,0,botIn)}px)`;
+
+  // ── 加盐拆解面板（S3 出现，S4 开始退场，finale 前完全消失）──
+  const ssIn  = seg(t,5.4,6.2,expoOut);
+  const ssOut = t>=10.5 ? seg(t,10.5,11.3,expoOut) : 0;
+  saltsplit.style.opacity = clamp01(ssIn - ssOut);
+  saltsplit.style.transform = `translateY(${lerp(24,0,ssIn)}px)`;
+  saltcells.forEach((c,i)=>{
+    const a = 6.0 + i*0.14;
+    const k = seg(t,a,a+0.5,expoOut);
+    c.style.opacity = inRebal ? clamp01(1-ssOut) : k;
+    c.style.transform = `scale(${lerp(0.6,1,k)})`;
+  });
+
+  // ── 加盐粒子飞散（S3 后段：从 BOT 面板飞向各 task 行）──
+  grains.forEach((g,i)=>{
+    const a = 7.2 + i*0.12;
+    const k = seg(t,a,a+1.1,easeInOut);
+    if(k<=0 || t>=10.8){ g.style.opacity=0; return; }
+    // 起点：拆解面板中心区（chart 坐标系内的右上）
+    const sx=1050, sy=40;
+    const tgt=grainTargets[i];
+    const x=lerp(sx,tgt.x,k), y=lerp(sy,tgt.y,k);
+    const fade = k<0.15 ? k/0.15 : (k>0.85 ? (1-k)/0.15 : 1);
+    g.style.transform=`translate(${x}px,${y}px) scale(${lerp(0.7,1,Math.min(k*2,1))})`;
+    g.style.opacity=clamp01(fade);
+  });
+
+  // ── 结尾落幅 ──
+  finale.style.opacity = inFinale ? seg(t,14,14.7,expoOut) : 0;
+  // finale 出现时把图表淡出
+  const chartFade = inFinale ? 1-seg(t,14,14.7,expoOut) : 1;
+  chart.style.opacity = chartFade;
+  document.getElementById('saltfx').style.opacity = chartFade;
+}
+
+// ══════ starter tick 模板（坑 #12/#13）══════
+let time=0, playing=false, lastTick=null;
+const scrubfill=document.getElementById('scrubfill'), tcEl=document.getElementById('tc'), ppEl=document.getElementById('pp');
+
+function paintChrome(){
+  scrubfill.style.width=(time/DURATION*100)+'%';
+  tcEl.textContent=time.toFixed(1)+' / '+DURATION.toFixed(1);
+}
+function tick(now){
+  if(lastTick===null){
+    lastTick=now; window.__ready=true; render(0); paintChrome();
+    requestAnimationFrame(tick); return;
+  }
+  const dt=(now-lastTick)/1000; lastTick=now;
+  if(playing){
+    let t=time+dt;
+    if(t>=DURATION){ t = window.__recording ? DURATION-0.001 : 0; }
+    time=t; render(time); paintChrome();
+  }
+  requestAnimationFrame(tick);
+}
+window.__seek=(t)=>{ time=t; lastTick=null; render(t); paintChrome(); };
+
+// chrome 交互
+ppEl.onclick=()=>{ playing=!playing; ppEl.textContent=playing?'❚❚':'▶'; };
+document.getElementById('scrub').onclick=(e)=>{
+  const r=e.currentTarget.getBoundingClientRect();
+  const t=clamp01((e.clientX-r.left)/r.width)*DURATION;
+  window.__seek(t); playing=true; ppEl.textContent='❚❚';
+};
+
+// ── 自适应缩放（浏览器里整页 fit）──
+function fit(){
+  const s=document.getElementById('stage');
+  const k=Math.min(window.innerWidth/1600, window.innerHeight/900);
+  s.style.transform=`scale(${k})`;
+}
+window.addEventListener('resize',fit); fit();
+
+// ── boot：等字体再启动 ──
+// __seekRender（render-video-seek.js 注入）：冻结自驱时钟，只由外部 __seek 推帧
+document.fonts.ready.then(()=>{
+  render(0); paintChrome();
+  if(window.__seekRender){ window.__ready=true; playing=false; return; }
+  playing=true; requestAnimationFrame(tick);
+});
+</script>
+</body>
+</html>

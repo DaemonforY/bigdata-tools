@@ -1,0 +1,156 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .grid{
+    margin-top:40px;flex:1;
+    display:grid;grid-template-columns:1.18fr 1fr;gap:96px;align-items:center;
+  }
+
+  /* ── 左：漏斗 ── */
+  .funnel{display:flex;flex-direction:column;gap:18px;}
+  .ftitle{
+    font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:10px;
+    display:flex;justify-content:space-between;
+  }
+  .step{display:flex;align-items:center;gap:24px;}
+  .step .lbl{
+    width:96px;flex:none;text-align:right;
+    font-size:30px;font-weight:800;letter-spacing:-0.02em;color:var(--white);
+  }
+  .step .bartrack{flex:1;height:74px;position:relative;display:flex;align-items:center;}
+  .step .barfill{
+    height:100%;border-radius:2px;display:flex;align-items:center;
+    padding-left:28px;
+    /* 漏斗梯形感：用斜切收窄 */
+    clip-path:polygon(0 0,100% 8%,100% 92%,0 100%);
+  }
+  .step .barfill .cnt{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:30px;
+    color:#0a0a0a;letter-spacing:0.01em;
+  }
+  .step .meta{
+    width:172px;flex:none;
+    font-family:'JetBrains Mono',monospace;font-size:19px;color:var(--dim);
+    line-height:1.35;
+  }
+  .step .meta .pct{display:block;font-size:24px;font-weight:700;color:var(--white);letter-spacing:0.02em;}
+  .step .meta .conv{color:var(--accent);}
+
+  /* 白→橙 5 级色阶 */
+  .c1{background:#FFFFFF;}
+  .c2{background:#FFD3BC;}
+  .c3{background:#FFA877;}
+  .c4{background:#FF8A4D;}
+  .c5{background:var(--accent);box-shadow:0 0 34px rgba(255,107,44,0.34);}
+  .c5 .cnt{color:#1a0d05;}
+
+  /* ── 右：hero 数字 ── */
+  .hero{display:flex;flex-direction:column;}
+  .hero .tag{
+    font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:6px;
+  }
+  .hero .big{
+    font-weight:900;letter-spacing:-0.05em;line-height:0.86;
+    color:var(--accent);text-shadow:0 0 1px rgba(255,107,44,0.4);
+    font-size:300px;
+  }
+  .hero .who{
+    font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;
+    color:var(--white);margin-top:14px;letter-spacing:0;
+  }
+  .hero .who .ar{color:var(--accent);font-weight:700;}
+
+  .stepconv{
+    margin-top:46px;display:flex;gap:0;border-top:1px solid var(--line);padding-top:30px;
+  }
+  .sc{flex:1;text-align:center;border-right:1px solid var(--line);}
+  .sc:last-child{border-right:none;}
+  .sc .scv{font-weight:900;font-size:52px;letter-spacing:-0.03em;color:var(--white);line-height:1;}
+  .sc .scl{
+    font-family:'JetBrains Mono',monospace;font-size:17px;color:var(--dim);
+    letter-spacing:0.08em;margin-top:10px;
+  }
+
+  /* ── 底部代码提示 ── */
+  .hint{
+    margin-top:38px;
+    font-family:'JetBrains Mono',monospace;font-size:21px;line-height:1.55;
+    color:var(--dim);border-top:1px solid var(--line);padding-top:24px;
+  }
+  .hint .kw{color:var(--c-kw);} .hint .fn{color:var(--c-fn);}
+  .hint .str{color:var(--c-str);} .hint .num{color:var(--c-num);}
+  .hint .k{color:var(--white);font-weight:700;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>用户行为漏斗</h1>
+      <span class="en">Conversion Funnel</span>
+    </div>
+    <div class="lead">曝光 → 点击 → 加购 → 下单 → 支付，<b>五步转化</b>。</div>
+
+    <div class="grid">
+      <!-- 左：漏斗（视觉主角） -->
+      <div class="funnel">
+        <div class="ftitle"><span>Funnel</span><span>10,000 曝光起</span></div>
+
+        <div class="step">
+          <span class="lbl">曝光</span>
+          <div class="bartrack"><div class="barfill c1" style="width:100%"><span class="cnt">10,000</span></div></div>
+          <div class="meta"><span class="pct">100%</span></div>
+        </div>
+        <div class="step">
+          <span class="lbl">点击</span>
+          <div class="bartrack"><div class="barfill c2" style="width:60%"><span class="cnt">4,000</span></div></div>
+          <div class="meta"><span class="pct">40.0%</span>步转化 <span class="conv">40%</span></div>
+        </div>
+        <div class="step">
+          <span class="lbl">加购</span>
+          <div class="bartrack"><div class="barfill c3" style="width:42%"><span class="cnt">2,000</span></div></div>
+          <div class="meta"><span class="pct">20.0%</span>步转化 <span class="conv">50%</span></div>
+        </div>
+        <div class="step">
+          <span class="lbl">下单</span>
+          <div class="bartrack"><div class="barfill c4" style="width:28%"><span class="cnt">1,000</span></div></div>
+          <div class="meta"><span class="pct">10.0%</span>步转化 <span class="conv">50%</span></div>
+        </div>
+        <div class="step">
+          <span class="lbl">支付</span>
+          <div class="bartrack"><div class="barfill c5" style="width:20%"><span class="cnt">700</span></div></div>
+          <div class="meta"><span class="pct">7.0%</span>步转化 <span class="conv">70%</span></div>
+        </div>
+      </div>
+
+      <!-- 右：hero 数字 -->
+      <div class="hero">
+        <div class="tag">整体转化率</div>
+        <div class="big">7%</div>
+        <div class="who">10,000 曝光 <span class="ar">→</span> 700 支付</div>
+
+        <div class="stepconv">
+          <div class="sc"><div class="scv">40%</div><div class="scl">曝光→点击</div></div>
+          <div class="sc"><div class="scv">50%</div><div class="scl">点击→加购</div></div>
+          <div class="sc"><div class="scv">50%</div><div class="scl">加购→下单</div></div>
+          <div class="sc"><div class="scv">70%</div><div class="scl">下单→支付</div></div>
+        </div>
+
+        <div class="hint">
+<span class="fn">MAX</span>(<span class="kw">CASE WHEN</span> event_type=<span class="str">'click'</span> <span class="kw">THEN</span> <span class="num">1</span> <span class="kw">ELSE</span> <span class="num">0</span> <span class="kw">END</span>) <span class="kw">AS</span> step_flags
+<span style="color:var(--dimmer)">// 每个 user 聚出各步 flag，再<span class="k" style="color:var(--white)">逐层相乘</span>得分层人数</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · 用户行为漏斗</span>
+    <span class="pg">10</span>
+  </footer>
+</body></html>

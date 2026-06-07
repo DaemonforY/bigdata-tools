@@ -1,0 +1,94 @@
+/* ─────────────────────────────────────────────────────────────
+   Spark L5–L6 Deck · 共享设计 token
+   风格：黑底巨型数字剧场 (Black Big-Number Stage)
+   每页 <link rel="stylesheet" href="../shared/tokens.css">
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --black:#000000;
+  --white:#FFFFFF;
+  --accent:#FF6B2C;       /* Spark 橙：全程唯一强调色 */
+  --green:#00E676;        /* 仅作 "健康/正常" 的次级冷调，不另作强调 */
+  --dim:rgba(255,255,255,0.46);
+  --dimmer:rgba(255,255,255,0.28);
+  --faint:rgba(255,255,255,0.14);
+  --line:rgba(255,255,255,0.12);
+  /* 代码语法高亮（暗底）*/
+  --c-kw:#FF79C6;   --c-str:#F1FA8C;  --c-num:#BD93F9;
+  --c-fn:#50FA7B;   --c-cm:#6272A4;   --c-var:#8BE9FD;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* 画布锁定 1920×1080 */
+body{
+  width:1920px;height:1080px;margin:0;overflow:hidden;
+  background:var(--black);color:var(--white);
+  font-family:'Inter',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums;
+  position:relative;
+}
+
+/* 舞台聚光 + 暗角（每页通用 chrome）*/
+.stage{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 100% at 30% 38%,
+    rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.015) 32%, rgba(0,0,0,0) 62%);
+}
+.vignette{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(150% 130% at 50% 50%,
+    rgba(0,0,0,0) 56%, rgba(0,0,0,0.84) 100%);
+}
+.wrap{position:absolute;inset:0;padding:96px 120px 110px;display:flex;flex-direction:column;}
+
+/* 页眉：L5/L6 编号 + 标题 + 英文 */
+.head{display:flex;align-items:baseline;gap:26px;}
+.head .num{
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:24px;
+  color:var(--accent);letter-spacing:0.1em;
+}
+.head h1{font-weight:900;font-size:78px;letter-spacing:-0.03em;line-height:1;}
+.head .en{
+  font-family:'JetBrains Mono',monospace;font-weight:500;font-size:30px;
+  color:var(--dim);letter-spacing:0.02em;align-self:flex-end;margin-bottom:6px;
+}
+.lead{
+  margin-top:26px;font-size:34px;font-weight:600;color:rgba(255,255,255,0.86);
+  letter-spacing:-0.01em;
+}
+.lead b{color:var(--accent);font-weight:800;}
+
+/* 页脚 */
+footer{
+  position:absolute;left:120px;right:120px;bottom:46px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:19px;
+  letter-spacing:0.12em;color:var(--dimmer);
+}
+footer .pg{color:var(--white);}
+
+/* kicker（章节封 / 封面用）*/
+.kicker{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:500;font-size:24px;letter-spacing:0.32em;
+  text-transform:uppercase;color:var(--accent);
+  display:flex;align-items:center;gap:22px;
+}
+.kicker .tick{width:54px;height:2px;background:var(--accent);display:inline-block;}
+
+/* 通用 mono 小标签 */
+.eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+  text-transform:uppercase;color:var(--dim);
+}
+
+/* 代码块（暗底，JetBrains Mono 语法高亮）*/
+.code{
+  background:rgba(255,255,255,0.03);border:1px solid var(--line);border-radius:6px;
+  font-family:'JetBrains Mono',monospace;line-height:1.62;
+  padding:26px 30px;overflow:hidden;white-space:pre;
+}
+.code .kw{color:var(--c-kw);} .code .str{color:var(--c-str);}
+.code .num{color:var(--c-num);} .code .fn{color:var(--c-fn);}
+.code .cm{color:var(--c-cm);} .code .var{color:var(--c-var);}
+.code .op{color:var(--accent);}

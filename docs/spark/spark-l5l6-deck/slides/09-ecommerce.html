@@ -1,0 +1,122 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .wrap{padding:84px 120px 104px;}
+  .grid{
+    margin-top:38px;flex:1;
+    display:grid;grid-template-columns:1.32fr 1fr;gap:64px;min-height:0;
+  }
+  /* main code column */
+  .main{display:flex;flex-direction:column;min-height:0;}
+  .codewrap{display:flex;flex-direction:column;}
+  .codewrap .label{
+    display:inline-flex;align-items:center;gap:12px;align-self:flex-start;
+    font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;
+    letter-spacing:0.08em;color:var(--black);background:var(--accent);
+    padding:6px 16px;margin-bottom:0;
+  }
+  .codewrap .label .dot{width:8px;height:8px;background:var(--black);border-radius:50%;display:inline-block;}
+  .code{font-size:24px;line-height:1.58;border-top-left-radius:0;padding:28px 32px;}
+
+  .notes{
+    margin-top:38px;border-top:1px solid var(--line);padding-top:30px;
+    display:flex;flex-direction:column;gap:20px;
+  }
+  .notes h3{
+    font-family:'JetBrains Mono',monospace;font-size:20px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:4px;
+  }
+  .note{display:flex;align-items:baseline;gap:16px;}
+  .note .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17px;
+    color:var(--accent);width:26px;flex:none;
+  }
+  .note p{font-size:25px;line-height:1.4;color:rgba(255,255,255,0.82);font-weight:400;}
+  .note p .k{color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;}
+  .note p .w{color:var(--white);font-weight:700;}
+
+  /* right column: three scenarios */
+  .side{display:flex;flex-direction:column;gap:24px;min-height:0;}
+  .side .stitle{
+    font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);
+  }
+  .scn{
+    border:1px solid var(--line);padding:24px 26px;display:flex;flex-direction:column;gap:10px;
+    background:rgba(255,255,255,0.02);
+  }
+  .scn .top{display:flex;align-items:baseline;gap:16px;}
+  .scn .qn{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:42px;
+    color:var(--accent);letter-spacing:-0.02em;line-height:0.9;
+  }
+  .scn .qt{font-size:30px;font-weight:800;letter-spacing:-0.01em;}
+  .scn .qd{font-size:23px;line-height:1.42;color:rgba(255,255,255,0.7);font-weight:400;}
+  .scn .qd code{
+    font-family:'JetBrains Mono',monospace;color:var(--c-var);font-size:21px;
+  }
+  .scn .qd .hl{color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>电商实战迁移</h1>
+      <span class="en">Hive → Spark SQL</span>
+    </div>
+    <div class="lead">典型 Hive SQL <b>→</b> Spark SQL 迁移 —— 三个常见查询场景。</div>
+
+    <div class="grid">
+      <!-- main code: GMV -->
+      <div class="main">
+        <div class="codewrap">
+          <span class="label"><span class="dot"></span>gmv.py</span>
+          <div class="code"><span class="var">df</span> <span class="op">=</span> spark.read.<span class="fn">parquet</span>(<span class="str">"oss://bucket/orders/"</span>)
+df.<span class="fn">createOrReplaceTempView</span>(<span class="str">"orders"</span>)
+
+spark.<span class="fn">sql</span>(<span class="str">"""</span>
+<span class="str">    </span><span class="kw">SELECT</span> <span class="fn">date_format</span>(create_time,<span class="str">'yyyy-MM'</span>) <span class="kw">AS</span> mon,
+<span class="str">           </span>category, <span class="fn">SUM</span>(amount) <span class="kw">AS</span> gmv,
+<span class="str">           </span><span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> user_id) <span class="kw">AS</span> buyers
+<span class="str">    </span><span class="kw">FROM</span> orders
+<span class="str">    </span><span class="kw">WHERE</span> create_time <span class="op">&gt;=</span> <span class="str">'2024-01-01'</span> <span class="kw">AND</span> status <span class="op">=</span> <span class="str">'paid'</span>
+<span class="str">    </span><span class="kw">GROUP BY</span> <span class="num">1</span>, <span class="num">2</span> <span class="kw">ORDER BY</span> mon, gmv <span class="kw">DESC</span>
+<span class="str">"""</span>).<span class="fn">show</span>()</div>
+        </div>
+
+        <div class="notes">
+          <h3>迁移要点</h3>
+          <div class="note"><span class="ix">01</span><p><span class="k">DATE_FORMAT</span> 等函数同名直用，SQL 几乎零改动</p></div>
+          <div class="note"><span class="ix">02</span><p>表路径从 <span class="w">Hive Metastore</span> 改为直读 <span class="k">Parquet</span></p></div>
+          <div class="note"><span class="ix">03</span><p><span class="k">create_time</span> 过滤自动触发 <span class="w">partition pruning</span></p></div>
+        </div>
+      </div>
+
+      <!-- side: three scenarios -->
+      <div class="side">
+        <span class="stitle">三个查询场景</span>
+        <div class="scn">
+          <div class="top"><span class="qn">01</span><span class="qt">GMV 统计</span></div>
+          <p class="qd">按月 + 品类 <span class="hl">SUM(amount)</span>，<code>COUNT(DISTINCT user_id)</code> 统计买家数</p>
+        </div>
+        <div class="scn">
+          <div class="top"><span class="qn">02</span><span class="qt">复购率</span></div>
+          <p class="qd">30 天内下过 <span class="hl">≥2 单</span>的用户比例 ——<br><code>WITH user_orders … CASE WHEN order_cnt&gt;=2</code></p>
+        </div>
+        <div class="scn">
+          <div class="top"><span class="qn">03</span><span class="qt">销售排名</span></div>
+          <p class="qd">每品类 <span class="hl">TOP3</span> ——<br><code>RANK() OVER (PARTITION BY category ORDER BY sales DESC)</code>，<code>WHERE rnk&lt;=3</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · 电商实战 · Hive → Spark SQL</span>
+    <span class="pg">09</span>
+  </footer>
+</body></html>

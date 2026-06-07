@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .grid{
+    margin-top:46px;flex:1;
+    display:grid;grid-template-columns:1.18fr 1fr;gap:80px;align-items:center;
+  }
+
+  /* code panel */
+  .codewrap{display:flex;flex-direction:column;}
+  .codetag{
+    font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:18px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .codetag .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block;}
+  .code{font-size:25px;line-height:1.66;}
+  /* the two AQE lines: highlighted band */
+  .code .aqe{
+    display:block;background:rgba(255,107,44,0.12);
+    box-shadow:inset 4px 0 0 var(--accent);
+    margin:0 -30px;padding:0 30px 0 26px;
+  }
+  .code .aqecm{color:var(--accent);font-weight:700;}
+
+  /* right: capability points */
+  .caps{display:flex;flex-direction:column;gap:8px;}
+  .caps .eyebrow{margin-bottom:26px;}
+  .cap{display:flex;align-items:flex-start;gap:24px;padding:24px 0;border-top:1px solid var(--line);}
+  .cap:last-of-type{border-bottom:1px solid var(--line);}
+  .cap .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:24px;
+    color:var(--black);background:var(--accent);width:44px;height:44px;flex:none;
+    display:flex;align-items:center;justify-content:center;margin-top:2px;
+  }
+  .cap .txt{display:flex;flex-direction:column;gap:6px;}
+  .cap .t{font-size:31px;font-weight:800;letter-spacing:-0.01em;line-height:1.15;}
+  .cap .t b{color:var(--accent);font-weight:800;}
+  .cap .d{font-size:21px;color:var(--dim);font-family:'JetBrains Mono',monospace;}
+
+  /* bottom golden line */
+  .punch{
+    margin-top:36px;padding-top:30px;border-top:1px solid var(--line);
+    display:flex;align-items:baseline;gap:24px;
+  }
+  .punch .lab{
+    font-family:'JetBrains Mono',monospace;font-size:20px;letter-spacing:0.2em;
+    text-transform:uppercase;color:var(--dimmer);flex:none;
+  }
+  .punch .line{font-size:44px;font-weight:900;letter-spacing:-0.02em;}
+  .punch .line b{color:var(--accent);}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L6</span>
+      <h1>AQE 自适应查询执行</h1>
+      <span class="en">Adaptive Query Execution</span>
+    </div>
+    <div class="lead">Spark 3.0+ <b>默认开启</b> —— 运行时动态调整，省去大量手动调参。</div>
+
+    <div class="grid">
+      <!-- code -->
+      <div class="codewrap">
+        <div class="codetag"><span class="dot"></span>spark_config.py</div>
+        <div class="code"><span class="var">spark</span> <span class="op">=</span> <span class="var">SparkSession</span>.<span class="fn">builder</span>.<span class="fn">appName</span>(<span class="str">"prod-job"</span>) \
+    .<span class="fn">config</span>(<span class="str">"spark.executor.memory"</span>, <span class="str">"8g"</span>) \
+    .<span class="fn">config</span>(<span class="str">"spark.executor.cores"</span>, <span class="str">"4"</span>) \
+    .<span class="fn">config</span>(<span class="str">"spark.sql.shuffle.partitions"</span>, <span class="str">"200"</span>) \
+    .<span class="fn">config</span>(<span class="str">"spark.dynamicAllocation.enabled"</span>, <span class="str">"true"</span>) \
+<span class="aqe">    <span class="aqecm"># ── AQE：强烈推荐开启 ──</span>
+    .<span class="fn">config</span>(<span class="str">"spark.sql.adaptive.enabled"</span>, <span class="str">"true"</span>) \
+    .<span class="fn">config</span>(<span class="str">"spark.sql.adaptive.skewJoin.enabled"</span>, <span class="str">"true"</span>) \</span>
+    .<span class="fn">getOrCreate</span>()</div>
+      </div>
+
+      <!-- capabilities -->
+      <div class="caps">
+        <div class="eyebrow">AQE 三大能力</div>
+        <div class="cap">
+          <span class="ix">1</span>
+          <div class="txt">
+            <div class="t">运行时<b>动态调整</b> shuffle 分区数</div>
+            <div class="d">按真实数据量重算，不再死守 200</div>
+          </div>
+        </div>
+        <div class="cap">
+          <span class="ix">2</span>
+          <div class="txt">
+            <div class="t">自动检测并处理<b>数据倾斜</b></div>
+            <div class="d">skewJoin · 拆分超大分区</div>
+          </div>
+        </div>
+        <div class="cap">
+          <span class="ix">3</span>
+          <div class="txt">
+            <div class="t">动态<b>合并小分区</b></div>
+            <div class="d">省去手动调参</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="punch">
+      <span class="lab">Takeaway</span>
+      <div class="line">开启 AQE，<b>让 Spark 自己调优</b>。</div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L6 · AQE 自适应查询执行</span>
+    <span class="pg">17</span>
+  </footer>
+</body></html>

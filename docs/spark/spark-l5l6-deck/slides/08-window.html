@@ -1,0 +1,156 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .grid{
+    margin-top:42px;flex:1;
+    display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:stretch;
+  }
+
+  /* ── 左右对比主角 ── */
+  .panel{display:flex;flex-direction:column;}
+  .panel .ptag{
+    font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:6px;
+  }
+  .panel h2{font-weight:900;font-size:62px;letter-spacing:-0.03em;line-height:1;margin-bottom:6px;}
+  .panel .sub{
+    font-family:'JetBrains Mono',monospace;font-size:23px;color:var(--dimmer);
+    letter-spacing:0.02em;margin-bottom:30px;
+  }
+  .panel.hot h2{color:var(--accent);}
+  .panel.hot .ptag{color:var(--accent);}
+
+  /* 行示意图 */
+  .rows{display:flex;flex-direction:column;gap:9px;}
+  .r{
+    height:42px;display:flex;align-items:center;gap:14px;padding:0 18px;
+    border:1px solid var(--line);background:rgba(255,255,255,0.025);
+    font-family:'JetBrains Mono',monospace;font-size:21px;color:rgba(255,255,255,0.7);
+  }
+  .r .d{width:9px;height:9px;border-radius:50%;background:var(--dimmer);flex:none;}
+  .arrow{
+    font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:0.1em;
+    color:var(--dim);margin:18px 0;display:flex;align-items:center;gap:16px;
+  }
+  .arrow .line{flex:1;height:1px;background:var(--line);}
+
+  /* 左：压缩结果 */
+  .cold .r.out{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.06);color:var(--white);font-weight:700;}
+  .cold .r.out .d{background:var(--white);}
+
+  /* 右：保留全部 + 新列 */
+  .hot .r.keep .d{background:var(--accent);}
+  .hot .r .nc{
+    margin-left:auto;font-weight:700;color:var(--accent);
+    background:rgba(255,107,44,0.12);border:1px solid rgba(255,107,44,0.4);
+    padding:1px 12px;font-size:18px;
+  }
+  .hot .colhead{
+    margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:17px;
+    letter-spacing:0.12em;color:var(--accent);text-transform:uppercase;
+    margin-bottom:6px;padding-right:2px;
+  }
+
+  .verdict{
+    margin-top:auto;padding-top:22px;font-size:26px;font-weight:700;
+    color:rgba(255,255,255,0.78);
+  }
+  .panel.hot .verdict{color:var(--white);}
+  .panel.hot .verdict b{color:var(--accent);font-weight:900;}
+
+  /* ── 底部：代码 + 要点 ── */
+  .foot{
+    margin-top:38px;display:grid;grid-template-columns:1.5fr 1fr;gap:60px;
+    border-top:1px solid var(--line);padding-top:30px;
+  }
+  .code{font-size:22px;padding:24px 28px;line-height:1.58;}
+  .code .tag{
+    display:block;font-size:16px;letter-spacing:0.16em;text-transform:uppercase;
+    color:var(--dimmer);margin-bottom:14px;
+  }
+  .kp h3{
+    font-family:'JetBrains Mono',monospace;font-size:19px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:16px;
+  }
+  .kp li{
+    list-style:none;font-size:24px;line-height:1.42;color:rgba(255,255,255,0.82);
+    margin-bottom:14px;display:flex;gap:14px;
+  }
+  .kp li .b{color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700;flex:none;}
+  .kp li .k{color:var(--white);font-weight:700;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>窗口函数</h1>
+      <span class="en">Window Functions</span>
+    </div>
+    <div class="lead">分组后<b>对每行单独计算</b> —— 与 GroupBy 的本质区别：窗口函数保留所有行。</div>
+
+    <div class="grid">
+      <!-- 左：GroupBy -->
+      <div class="panel cold">
+        <div class="ptag">groupBy().agg()</div>
+        <h2>GroupBy</h2>
+        <div class="sub">N 行 → 1 行 / 组（压缩）</div>
+        <div class="rows">
+          <div class="r"><span class="d"></span>user_1 · 80</div>
+          <div class="r"><span class="d"></span>user_1 · 120</div>
+          <div class="r"><span class="d"></span>user_1 · 50</div>
+        </div>
+        <div class="arrow"><span>聚合压缩</span><span class="line"></span><span>↓</span></div>
+        <div class="rows">
+          <div class="r out"><span class="d"></span>user_1 · sum = 250</div>
+        </div>
+        <div class="verdict">3 行变 1 行，<br>原始明细被吃掉</div>
+      </div>
+
+      <!-- 右：窗口函数 -->
+      <div class="panel hot">
+        <div class="ptag">.over(window)</div>
+        <h2>窗口函数</h2>
+        <div class="sub">N 行 → N 行 + 新列（不减行）</div>
+        <div class="colhead">+ rank_in_user</div>
+        <div class="rows">
+          <div class="r keep"><span class="d"></span>user_1 · 120<span class="nc">rank 1</span></div>
+          <div class="r keep"><span class="d"></span>user_1 · 80<span class="nc">rank 2</span></div>
+          <div class="r keep"><span class="d"></span>user_1 · 50<span class="nc">rank 3</span></div>
+        </div>
+        <div class="arrow"><span>逐行计算</span><span class="line"></span><span>↓</span></div>
+        <div class="rows">
+          <div class="r keep"><span class="d"></span>3 行原样保留 + 1 新列</div>
+        </div>
+        <div class="verdict">行数不变，<br>每行都<b>带上组内信息</b></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="code"><span class="tag">window.py</span><span class="kw">from</span> pyspark.sql <span class="kw">import</span> Window
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> rank, sum, lag
+
+w = Window.<span class="fn">partitionBy</span>(<span class="str">"user_id"</span>).<span class="fn">orderBy</span>(<span class="fn">col</span>(<span class="str">"amount"</span>).<span class="fn">desc</span>())
+
+df.<span class="fn">withColumn</span>(<span class="str">"rank_in_user"</span>, <span class="fn">rank</span>().<span class="fn">over</span>(w))     <span class="cm"># 组内排名</span>
+df.<span class="fn">withColumn</span>(<span class="str">"cum"</span>, <span class="fn">sum</span>(<span class="str">"amount"</span>).<span class="fn">over</span>(w))        <span class="cm"># 累计</span>
+df.<span class="fn">withColumn</span>(<span class="str">"prev"</span>, <span class="fn">lag</span>(<span class="str">"price"</span>, <span class="num">1</span>).<span class="fn">over</span>(w))     <span class="cm"># 上一行值</span></div>
+      <div class="kp">
+        <h3>Key Points</h3>
+        <ul>
+          <li><span class="b">▸</span><span><span class="k">partitionBy</span> 定义分组，<span class="k">orderBy</span> 定义排序</span></li>
+          <li><span class="b">▸</span><span>常用 <span class="k">rank / lag / lead / rowsBetween</span></span></li>
+          <li><span class="b">▸</span><span>适合 <span class="k">排名、累计、移动平均</span></span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · 窗口函数</span>
+    <span class="pg">08</span>
+  </footer>
+</body></html>

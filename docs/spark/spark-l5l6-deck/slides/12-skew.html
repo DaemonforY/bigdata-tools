@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#000000;
+    --white:#FFFFFF;
+    --accent:#FF6B2C;
+    --green:#00E676;
+    --dim:rgba(255,255,255,0.46);
+    --dimmer:rgba(255,255,255,0.28);
+    --line:rgba(255,255,255,0.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    width:1920px;height:1080px;margin:0;overflow:hidden;
+    background:var(--black);color:var(--white);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+    position:relative;
+  }
+  .stage{
+    position:absolute;inset:0;
+    background:radial-gradient(120% 110% at 72% 42%, rgba(255,107,44,0.07) 0%, rgba(255,255,255,0.012) 34%, rgba(0,0,0,0) 60%);
+  }
+  .vignette{
+    position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(150% 130% at 50% 50%, rgba(0,0,0,0) 58%, rgba(0,0,0,0.82) 100%);
+  }
+  .wrap{position:absolute;inset:0;padding:96px 120px 110px;display:flex;flex-direction:column;}
+
+  /* header */
+  .head{display:flex;align-items:baseline;gap:26px;}
+  .head .num{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:24px;
+    color:var(--accent);letter-spacing:0.1em;
+  }
+  .head h1{font-weight:900;font-size:78px;letter-spacing:-0.03em;line-height:1;}
+  .head .en{
+    font-family:'JetBrains Mono',monospace;font-weight:500;font-size:30px;
+    color:var(--dim);letter-spacing:0.02em;align-self:flex-end;margin-bottom:6px;
+  }
+  .lead{
+    margin-top:26px;font-size:34px;font-weight:600;color:rgba(255,255,255,0.86);
+    letter-spacing:-0.01em;
+  }
+  .lead b{color:var(--accent);font-weight:800;}
+
+  /* main grid */
+  .grid{
+    margin-top:48px;flex:1;
+    display:grid;grid-template-columns:1.02fr 1fr;gap:90px;align-items:center;
+  }
+
+  /* big numbers theatre */
+  .nums{display:flex;flex-direction:column;gap:30px;}
+  .nrow .tag{
+    font-family:'JetBrains Mono',monospace;font-size:22px;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:4px;
+  }
+  .nrow .big{
+    font-weight:900;letter-spacing:-0.05em;line-height:0.9;display:flex;align-items:flex-end;gap:18px;
+  }
+  .nrow.calm .big{font-size:118px;color:var(--white);}
+  .nrow.calm .big .unit{font-size:60px;font-weight:800;color:var(--green);letter-spacing:-0.02em;}
+  .nrow.calm .big .who{font-size:34px;font-weight:600;color:var(--dim);letter-spacing:0;margin-bottom:18px;font-family:'JetBrains Mono',monospace;}
+
+  .vs{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:24px;
+    color:var(--dimmer);letter-spacing:0.3em;margin:6px 0 6px;
+  }
+  .nrow.hot .big{font-size:230px;color:var(--accent);text-shadow:0 0 1px rgba(255,107,44,0.4);}
+  .nrow.hot .big .unit{font-size:96px;font-weight:800;color:var(--accent);margin-bottom:26px;}
+  .nrow.hot .who{
+    font-size:34px;font-weight:600;color:var(--white);letter-spacing:0;
+    margin-bottom:42px;font-family:'JetBrains Mono',monospace;
+  }
+
+  /* right column: bar chart */
+  .chart{display:flex;flex-direction:column;}
+  .chart .ctitle{
+    font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:30px;
+    display:flex;justify-content:space-between;
+  }
+  .bar{display:flex;align-items:center;gap:18px;margin-bottom:15px;}
+  .bar .lbl{
+    font-family:'JetBrains Mono',monospace;font-size:19px;color:var(--dimmer);
+    width:84px;flex:none;text-align:right;
+  }
+  .bar .track{flex:1;height:30px;position:relative;}
+  .bar .fill{height:100%;border-radius:1px;}
+  .bar .fill.ok{background:var(--green);box-shadow:0 0 18px rgba(0,230,118,0.18);}
+  .bar .fill.bad{background:var(--accent);box-shadow:0 0 26px rgba(255,107,44,0.28);}
+  .bar .val{
+    font-family:'JetBrains Mono',monospace;font-size:19px;width:78px;flex:none;
+  }
+  .bar .val.ok{color:var(--green);}
+  .bar .val.bad{color:var(--accent);font-weight:700;}
+  .bar.hot .lbl{color:var(--white);}
+  .bar.hot .track{height:38px;}
+
+  /* causes + scenarios + weapons */
+  .foot-info{
+    margin-top:40px;display:grid;grid-template-columns:1.4fr 1fr;gap:60px;
+    border-top:1px solid var(--line);padding-top:34px;
+  }
+  .blk h3{
+    font-family:'JetBrains Mono',monospace;font-size:20px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:14px;
+  }
+  .blk p{font-size:25px;line-height:1.5;color:rgba(255,255,255,0.82);font-weight:400;}
+  .blk p .k{color:var(--white);font-weight:700;}
+  .weapons{display:flex;flex-direction:column;gap:16px;}
+  .wp{display:flex;align-items:center;gap:16px;}
+  .wp .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
+    color:var(--black);background:var(--accent);width:34px;height:34px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .wp .wt{font-size:25px;font-weight:700;}
+  .wp .wd{font-size:21px;color:var(--dim);font-family:'JetBrains Mono',monospace;}
+
+  footer{
+    position:absolute;left:120px;right:120px;bottom:46px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:'JetBrains Mono',monospace;font-size:19px;
+    letter-spacing:0.12em;color:var(--dimmer);
+  }
+  footer .pg{color:var(--white);}
+</style>
+</head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L6</span>
+      <h1>数据倾斜</h1>
+      <span class="en">Data Skew</span>
+    </div>
+    <div class="lead">为什么 <b>99 个 Task 都完成了</b>，第 100 个还在跑？</div>
+
+    <div class="grid">
+      <!-- big number theatre -->
+      <div class="nums">
+        <div class="nrow calm">
+          <div class="tag">99 tasks</div>
+          <div class="big">2<span class="unit">s</span><span class="who">// 早已空闲</span></div>
+        </div>
+        <div class="vs">— VS —</div>
+        <div class="nrow hot">
+          <div class="tag" style="color:var(--accent)">1 task</div>
+          <div class="big">47<span class="unit">min</span></div>
+          <div class="who">// 一个 Task 扛了 90% 的数据</div>
+        </div>
+      </div>
+
+      <!-- bar chart -->
+      <div class="chart">
+        <div class="ctitle"><span>Task Duration</span><span>Spark UI · Stages</span></div>
+        <div class="bar"><span class="lbl">task 01</span><div class="track"><div class="fill ok" style="width:4%"></div></div><span class="val ok">1s</span></div>
+        <div class="bar"><span class="lbl">task 02</span><div class="track"><div class="fill ok" style="width:6%"></div></div><span class="val ok">1s</span></div>
+        <div class="bar"><span class="lbl">task 03</span><div class="track"><div class="fill ok" style="width:5%"></div></div><span class="val ok">1s</span></div>
+        <div class="bar"><span class="lbl">task 04</span><div class="track"><div class="fill ok" style="width:8%"></div></div><span class="val ok">2s</span></div>
+        <div class="bar"><span class="lbl">task 05</span><div class="track"><div class="fill ok" style="width:5%"></div></div><span class="val ok">1s</span></div>
+        <div class="bar"><span class="lbl">task 06</span><div class="track"><div class="fill ok" style="width:7%"></div></div><span class="val ok">2s</span></div>
+        <div class="bar"><span class="lbl">task 07</span><div class="track"><div class="fill ok" style="width:5%"></div></div><span class="val ok">1s</span></div>
+        <div class="bar hot"><span class="lbl">task 08</span><div class="track"><div class="fill bad" style="width:100%"></div></div><span class="val bad">47min</span></div>
+      </div>
+    </div>
+
+    <div class="foot-info">
+      <div class="blk">
+        <h3>成因 / 典型场景</h3>
+        <p>GroupBy / Join 后，<span class="k">某个 key 的数据量远大于其他 key</span>，一个 Task 处理了 90% 数据，其余早已空闲。电商日志里"爬虫账号"产生百万条记录；Join 时 NULL 值被当成同一个 key 聚合。</p>
+      </div>
+      <div class="blk">
+        <h3>两种武器</h3>
+        <div class="weapons">
+          <div class="wp"><span class="ix">1</span><span class="wt">加盐打散</span><span class="wd">GroupBy 倾斜</span></div>
+          <div class="wp"><span class="ix">2</span><span class="wt">广播 Join</span><span class="wd">Join 倾斜</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L6 · 性能调优 — 数据倾斜</span>
+    <span class="pg">08</span>
+  </footer>
+</body>
+</html>

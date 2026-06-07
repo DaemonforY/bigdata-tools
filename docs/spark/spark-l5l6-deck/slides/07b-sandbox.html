@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Shuffle / Join 可视化沙盘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#000;--white:#FFF;--accent:#FF6B2C;--green:#00E676;--cyan:#36E0FF;
+    --dim:rgba(255,255,255,0.46);--dimmer:rgba(255,255,255,0.26);
+    --line:rgba(255,255,255,0.12);--faint:rgba(255,255,255,0.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{margin:0;background:#000;}
+  #fit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000;}
+  #stage{
+    position:relative;width:1920px;height:1080px;overflow:hidden;
+    background:radial-gradient(120% 100% at 30% 20%,rgba(255,107,44,0.05) 0%,rgba(0,0,0,0) 50%),var(--black);
+    color:var(--white);
+    font-family:'Inter','PingFang SC',system-ui,sans-serif;
+    font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+  }
+  #stage::before{content:'';position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:80px 80px;opacity:0.4;mask:radial-gradient(130% 100% at 50% 40%,#000 30%,transparent 82%);}
+
+  /* ── header ── */
+  .hdr{position:absolute;left:72px;top:54px;right:72px;display:flex;align-items:baseline;gap:24px;}
+  .hdr .num{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;color:var(--accent);letter-spacing:0.1em;}
+  .hdr h1{font-weight:900;font-size:60px;letter-spacing:-0.03em;line-height:1;}
+  .hdr .en{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:26px;color:var(--dim);align-self:flex-end;margin-bottom:4px;}
+  .hdr .hint{margin-left:auto;align-self:flex-end;font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--dimmer);letter-spacing:0.06em;}
+
+  /* ── 操作选择器 ── */
+  #ops{position:absolute;left:72px;top:172px;display:flex;gap:10px;flex-wrap:wrap;}
+  .op{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
+    padding:12px 22px;border:1.5px solid var(--line);border-radius:8px;
+    background:rgba(255,255,255,0.03);color:var(--dim);cursor:pointer;
+    transition:all .15s;user-select:none;display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
+  .op .sub{font-size:11px;font-weight:500;letter-spacing:0.04em;opacity:0.7;}
+  .op:hover{border-color:var(--dimmer);color:var(--white);}
+  .op.active{border-color:var(--accent);background:rgba(255,107,44,0.1);color:var(--accent);}
+  .op.active.bc{border-color:var(--green);background:rgba(0,230,118,0.1);color:var(--green);}
+
+  /* ── 主区：左源表 / 中舞台 / 右结果 ── */
+  #main{position:absolute;left:72px;right:72px;top:268px;bottom:150px;display:grid;
+    grid-template-columns:340px 1fr 420px;gap:32px;}
+
+  .panel{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,0.02);padding:22px;overflow:hidden;display:flex;flex-direction:column;}
+  .panel .ptitle{font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+  .panel .ptitle .badge{font-size:12px;padding:3px 9px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--dimmer);}
+
+  /* 源表 */
+  .srctbl{margin-bottom:20px;}
+  .srctbl .cap{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent);margin-bottom:8px;display:flex;justify-content:space-between;}
+  .srctbl .cap.small{color:var(--green);}
+  table{width:100%;border-collapse:collapse;font-size:14px;font-family:'JetBrains Mono',monospace;}
+  th{text-align:left;padding:5px 8px;color:var(--dim);border-bottom:1px solid var(--line);font-weight:500;font-size:12px;letter-spacing:0.04em;}
+  td{padding:4px 8px;border-bottom:1px solid var(--faint);}
+  .k-uid{color:var(--cyan);} .k-num{color:var(--accent);} .k-null{color:#FF3B5C;}
+
+  /* 中央舞台 */
+  #arena{position:relative;flex:1;}
+  #svglayer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+  .node{position:absolute;border:1.5px solid var(--line);border-radius:10px;
+    background:rgba(255,255,255,0.03);padding:12px;width:188px;transition:border-color .25s,box-shadow .25s;}
+  .node.lit{border-color:var(--accent);box-shadow:0 0 30px rgba(255,107,44,0.18);}
+  .node.litg{border-color:var(--green);box-shadow:0 0 30px rgba(0,230,118,0.18);}
+  .node .nhdr{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--dim);margin-bottom:8px;display:flex;justify-content:space-between;}
+  .node .nhdr b{color:var(--white);font-weight:700;}
+  .cells{display:flex;flex-wrap:wrap;gap:4px;min-height:26px;}
+  .cell{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;
+    background:rgba(255,255,255,0.08);color:var(--white);}
+  .cell.k0{background:rgba(54,224,255,0.18);color:var(--cyan);}
+  .cell.k1{background:rgba(255,107,44,0.18);color:var(--accent);}
+  .cell.k2{background:rgba(0,230,118,0.18);color:var(--green);}
+  .cell.k3{background:rgba(189,147,249,0.2);color:#BD93F9;}
+  .cell.usr{background:rgba(0,230,118,0.14);color:var(--green);border:1px dashed rgba(0,230,118,0.4);}
+  /* 飞行粒子 */
+  .fly{position:absolute;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    padding:2px 7px;border-radius:4px;pointer-events:none;z-index:20;will-change:transform,opacity;}
+
+  /* 右侧结果 */
+  #result{font-size:14px;}
+  .rmeta{display:flex;gap:10px;margin-bottom:16px;}
+  .metric{flex:1;border:1px solid var(--line);border-radius:8px;padding:12px;text-align:center;}
+  .metric .mv{font-family:'JetBrains Mono',monospace;font-weight:900;font-size:30px;letter-spacing:-0.02em;}
+  .metric .ml{font-size:12px;color:var(--dim);margin-top:4px;}
+  .mv.shuffle-hot{color:var(--accent);} .mv.shuffle-zero{color:var(--green);}
+  #explain{border-left:3px solid var(--accent);padding:14px 16px;background:rgba(255,107,44,0.05);border-radius:0 8px 8px 0;
+    font-size:16px;line-height:1.6;color:rgba(255,255,255,0.86);margin-bottom:16px;min-height:96px;}
+  #explain.zero{border-left-color:var(--green);background:rgba(0,230,118,0.05);}
+  #explain b{color:var(--accent);font-weight:700;} #explain.zero b{color:var(--green);}
+  #restable{flex:1;overflow:auto;}
+
+  /* footer 控制条 */
+  .ctrl{position:absolute;left:72px;right:72px;bottom:54px;display:flex;align-items:center;gap:16px;
+    border-top:1px solid var(--line);padding-top:24px;}
+  .btn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17px;padding:13px 28px;border-radius:8px;
+    border:1.5px solid var(--accent);background:var(--accent);color:#000;cursor:pointer;transition:all .15s;}
+  .btn:hover{filter:brightness(1.1);}
+  .btn.ghost{background:transparent;color:var(--accent);}
+  .toggle{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--dim);cursor:pointer;user-select:none;}
+  .sw{width:46px;height:26px;border-radius:13px;background:rgba(255,255,255,0.12);position:relative;transition:background .2s;}
+  .sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;}
+  .toggle.on .sw{background:var(--green);} .toggle.on .sw::after{transform:translateX(20px);}
+  .toggle.on{color:var(--green);}
+  .ctrl .spacer{flex:1;}
+  .ctrl .legend{display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--dimmer);}
+  .ctrl .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+
+  .wm{position:absolute;bottom:18px;right:30px;font-size:11px;color:rgba(255,255,255,0.22);
+    letter-spacing:0.14em;font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="stage">
+    <div class="hdr">
+      <span class="num">L5 · L6</span>
+      <h1>Shuffle / Join 沙盘</h1>
+      <span class="en">Interactive Playground</span>
+      <span class="hint">选操作 → 点「执行」看数据怎么在节点间流动</span>
+    </div>
+
+    <div id="ops"></div>
+
+    <div id="main">
+      <!-- 左：源数据 -->
+      <div class="panel">
+        <div class="ptitle">源数据 <span class="badge" id="scalebadge">orders 8 行</span></div>
+        <div class="srctbl">
+          <div class="cap"><span>orders（大表）</span><span id="ordcnt">8 行</span></div>
+          <table id="orders-tbl"></table>
+        </div>
+        <div class="srctbl">
+          <div class="cap small"><span>users（小表）</span><span>3 行</span></div>
+          <table id="users-tbl"></table>
+        </div>
+      </div>
+
+      <!-- 中：节点舞台 -->
+      <div class="panel" style="overflow:visible;">
+        <div class="ptitle">集群 · Executors <span class="badge" id="stagephase">空闲</span></div>
+        <div id="arena">
+          <svg id="svglayer"></svg>
+        </div>
+      </div>
+
+      <!-- 右：结果 -->
+      <div class="panel">
+        <div class="ptitle">执行结果 <span class="badge" id="opbadge">—</span></div>
+        <div class="rmeta">
+          <div class="metric"><div class="mv" id="m-shuffle">—</div><div class="ml">Shuffle 数据量</div></div>
+          <div class="metric"><div class="mv" id="m-rows">—</div><div class="ml">结果行数</div></div>
+        </div>
+        <div id="explain">选一个操作，点下方「执行」按钮，看 Spark 在底层怎么处理数据。</div>
+        <div id="restable" style="font-size:13px;"></div>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <button class="btn" id="run">▶ 执行</button>
+      <button class="btn ghost" id="reset">↺ 重置</button>
+      <div class="toggle" id="aqe"><span>AQE 自适应</span><span class="sw"></span></div>
+      <div class="spacer"></div>
+      <div class="legend">
+        <span><i style="background:var(--cyan)"></i>key 分组</span>
+        <span><i style="background:var(--accent)"></i>Shuffle 流动</span>
+        <span><i style="background:var(--green)"></i>本地 / 广播</span>
+      </div>
+    </div>
+    <div class="wm">Huashu-Design · Spark 教学沙盘</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  Shuffle / Join 可视化沙盘 · 纯原生 JS
+// ════════════════════════════════════════════════
+const ORDERS = [
+  {oid:1001,uid:'U01',k:0,amt:5000},
+  {oid:1002,uid:'U02',k:1,amt:800},
+  {oid:1003,uid:'U01',k:0,amt:2000},
+  {oid:1004,uid:'U03',k:2,amt:300},
+  {oid:1005,uid:'U02',k:1,amt:1500},
+  {oid:1006,uid:'U03',k:2,amt:4200},
+  {oid:1007,uid:'U01',k:0,amt:1100},
+  {oid:1008,uid:'U02',k:1,amt:950},
+];
+// users 小表：U03 故意缺失，用于演示 left/outer 的 null
+const USERS = [
+  {uid:'U01',name:'Alice',tier:'VIP'},
+  {uid:'U02',name:'Bob',tier:'Normal'},
+  // U03 缺失
+];
+const uidToK = {U01:0,U02:1,U03:2};
+const NODES = 3;  // 3 个 Executor
+
+const OPS = [
+  {id:'groupby', label:'GroupBy', sub:'触发 Shuffle', kind:'shuffle'},
+  {id:'inner',   label:'inner join', sub:'两边都有', kind:'shuffle'},
+  {id:'left',    label:'left join', sub:'左全留·右补null', kind:'shuffle'},
+  {id:'right',   label:'right join', sub:'右全留', kind:'shuffle'},
+  {id:'full',    label:'full outer', sub:'两边都留', kind:'shuffle'},
+  {id:'broadcast',label:'broadcast join', sub:'零 Shuffle', kind:'broadcast'},
+];
+
+let curOp = 'groupby';
+let aqe = false;
+let running = false;
+
+// ── 渲染操作选择器 ──
+const opsEl = document.getElementById('ops');
+OPS.forEach(o=>{
+  const b=document.createElement('div');
+  b.className='op'+(o.id===curOp?' active'+(o.kind==='broadcast'?' bc':''):'');
+  b.innerHTML=`<span>${o.label}</span><span class="sub">${o.sub}</span>`;
+  b.onclick=()=>{ if(running)return; curOp=o.id; syncOps(); resetArena(); };
+  opsEl.appendChild(b);
+});
+function syncOps(){
+  [...opsEl.children].forEach((b,i)=>{
+    const o=OPS[i]; const on=o.id===curOp;
+    b.className='op'+(on?' active'+(o.kind==='broadcast'?' bc':''):'');
+  });
+}
+
+// ── 源表渲染 ──
+function renderSrc(){
+  const ot=document.getElementById('orders-tbl');
+  ot.innerHTML='<tr><th>oid</th><th>uid</th><th>amt</th></tr>'+
+    ORDERS.map(r=>`<tr><td>${r.oid}</td><td class="k-uid">${r.uid}</td><td class="k-num">${r.amt}</td></tr>`).join('');
+  const ut=document.getElementById('users-tbl');
+  ut.innerHTML='<tr><th>uid</th><th>name</th><th>tier</th></tr>'+
+    USERS.map(r=>`<tr><td class="k-uid">${r.uid}</td><td>${r.name}</td><td>${r.tier}</td></tr>`).join('');
+  document.getElementById('ordcnt').textContent=ORDERS.length+' 行';
+  document.getElementById('scalebadge').textContent='orders '+ORDERS.length+' 行';
+}
+
+// ── 节点舞台布局 ──
+const arena=document.getElementById('arena');
+const svg=document.getElementById('svglayer');
+let nodeEls=[];
+function buildNodes(){
+  nodeEls.forEach(n=>n.remove()); nodeEls=[];
+  const W=arena.clientWidth, H=arena.clientHeight;
+  // 3 个节点横向排布在下半区
+  const nw=188, gap=(W-nw*NODES)/(NODES+1);
+  for(let i=0;i<NODES;i++){
+    const n=document.createElement('div');
+    n.className='node';
+    n.style.left=(gap+i*(nw+gap))+'px';
+    n.style.top=(H-150)+'px';
+    n.innerHTML=`<div class="nhdr"><b>Node ${i+1}</b><span class="ncnt">0</span></div><div class="cells"></div>`;
+    arena.appendChild(n); nodeEls.push(n);
+  }
+}
+function nodeCenter(i){
+  const r=nodeEls[i].getBoundingClientRect(), a=arena.getBoundingClientRect();
+  return {x:r.left-a.left+r.width/2, y:r.top-a.top+8};
+}
+// 顶部"源数据散落"位置（初始数据所在）
+function srcPos(i){
+  const W=arena.clientWidth;
+  return {x: 60 + (i/(ORDERS.length-1))*(W-120), y: 30};
+}
+
+// ── 初始：把 orders 行散落在舞台顶部（模拟数据随机分布在各节点）──
+let chips=[];  // {el, rec, srcNode}
+function resetArena(){
+  running=false;
+  svg.innerHTML='';
+  chips.forEach(c=>c.el.remove()); chips=[];
+  buildNodes();
+  document.getElementById('stagephase').textContent='空闲';
+  // 散落 orders（按 oid 轮流落在 3 个节点的"原始分区"——顶部散开）
+  ORDERS.forEach((r,i)=>{
+    const c=document.createElement('div');
+    c.className='cell k'+r.k;
+    c.textContent=r.uid;
+    c.style.position='absolute';
+    const p=srcPos(i);
+    c.style.left=(p.x-18)+'px'; c.style.top=p.y+'px';
+    c.style.transition='all .9s cubic-bezier(0.16,1,0.3,1)';
+    arena.appendChild(c);
+    chips.push({el:c, rec:r, srcNode:i%NODES});
+  });
+  // 结果区重置
+  document.getElementById('m-shuffle').textContent='—';
+  document.getElementById('m-shuffle').className='mv';
+  document.getElementById('m-rows').textContent='—';
+  document.getElementById('opbadge').textContent='—';
+  const ex=document.getElementById('explain'); ex.className='';
+  ex.innerHTML='选一个操作，点下方「执行」按钮，看 Spark 在底层怎么处理数据。';
+  document.getElementById('restable').innerHTML='';
+  nodeEls.forEach(n=>{ n.className='node'; n.querySelector('.cells').innerHTML=''; n.querySelector('.ncnt').textContent='0'; });
+}
+
+// ── 工具：把 chip 飞到目标节点的 cells 里 ──
+function flyTo(chip, nodeIdx, delay, color){
+  const tgt=nodeCenter(nodeIdx);
+  // 落点在该节点 cells 区，带轻微散开
+  const jitterX=(Math.random()-0.5)*120;
+  setTimeout(()=>{
+    chip.el.style.left=(tgt.x-18+jitterX)+'px';
+    chip.el.style.top=(tgt.y+34+Math.random()*40)+'px';
+  }, delay);
+}
+// 画 Shuffle 流动连线（SVG）
+function drawWire(x1,y1,x2,y2,color,delay){
+  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  const mx=(x1+x2)/2, my=Math.min(y1,y2)-40;
+  p.setAttribute('d',`M${x1},${y1} Q${mx},${my} ${x2},${y2}`);
+  p.setAttribute('fill','none'); p.setAttribute('stroke',color);
+  p.setAttribute('stroke-width','1.5'); p.setAttribute('opacity','0');
+  const len=Math.hypot(x2-x1,y2-y1)+80;
+  p.setAttribute('stroke-dasharray',len); p.setAttribute('stroke-dashoffset',len);
+  svg.appendChild(p);
+  setTimeout(()=>{
+    p.style.transition='stroke-dashoffset .7s ease,opacity .3s';
+    p.setAttribute('opacity','0.35'); p.setAttribute('stroke-dashoffset','0');
+    setTimeout(()=>{ p.style.transition='opacity .6s'; p.setAttribute('opacity','0'); }, 1400);
+  }, delay);
+}
+
+// ── 执行各操作 ──
+function execute(){
+  if(running) return; running=true;
+  const phase=document.getElementById('stagephase');
+  const ex=document.getElementById('explain');
+  const opMeta=OPS.find(o=>o.id===curOp);
+  document.getElementById('opbadge').textContent=opMeta.label;
+
+  if(curOp==='broadcast'){
+    runBroadcast();
+  } else {
+    runShuffle(curOp);
+  }
+}
+
+// GroupBy / 各种 Join：按 key shuffle 到目标节点
+function runShuffle(op){
+  const phase=document.getElementById('stagephase');
+  phase.textContent='Shuffle 中…';
+  // 目标：相同 key 汇集到同一节点。key 0→Node1, 1→Node2, 2→Node3
+  const keyToNode = k=>k%NODES;
+  let moved=0;
+  chips.forEach((chip,idx)=>{
+    const tgt=keyToNode(chip.rec.k);
+    const delay=200+idx*90;
+    if(tgt!==chip.srcNode){ moved++; }
+    // 画流动线（从当前位置到目标节点）
+    const cp=chipPos(chip), nc=nodeCenter(tgt);
+    drawWire(cp.x,cp.y,nc.x,nc.y+34,'var(--accent)',delay);
+    flyTo(chip,tgt,delay,null);
+  });
+  // 点亮节点
+  setTimeout(()=>nodeEls.forEach(n=>n.classList.add('lit')),300);
+  // AQE：若开，shuffle 量显示被优化
+  const totalShuffle = ORDERS.length;  // 每行都参与重分布
+  let shuffleQty = moved;
+  setTimeout(()=>{
+    phase.textContent='聚合 / Join';
+    finishShuffle(op, shuffleQty, totalShuffle);
+    running=false;
+  }, 200+chips.length*90+900);
+}
+function chipPos(chip){
+  const r=chip.el.getBoundingClientRect(), a=arena.getBoundingClientRect();
+  return {x:r.left-a.left+18, y:r.top-a.top+10};
+}
+
+function finishShuffle(op, shuffleQty, total){
+  // 在每个节点的 cells 里填入归位的 chip（按 key）
+  const byNode=[[],[],[]];
+  chips.forEach(c=>byNode[c.rec.k%NODES].push(c.rec));
+  nodeEls.forEach((n,i)=>{
+    const cells=n.querySelector('.cells'); cells.innerHTML='';
+    byNode[i].forEach(r=>{
+      const c=document.createElement('span'); c.className='cell k'+r.k; c.textContent=r.uid; cells.appendChild(c);
+    });
+    n.querySelector('.ncnt').textContent=byNode[i].length;
+  });
+  // 计算结果 + 解释
+  const res=computeResult(op);
+  showResult(op, res, shuffleQty, total);
+}
+
+// Broadcast：小表复制到每个节点，大表不动（零 shuffle）
+function runBroadcast(){
+  const phase=document.getElementById('stagephase');
+  phase.textContent='广播小表…';
+  // 大表 chip 留在原地（按 oid 落到各节点，不按 key 移动）
+  chips.forEach((chip,idx)=>{
+    const tgt=chip.srcNode;
+    flyTo(chip,tgt,200+idx*60,null);
+  });
+  // 小表 users 复制到每个节点（绿色虚框 cell）
+  setTimeout(()=>{
+    nodeEls.forEach((n,i)=>{
+      n.classList.add('litg');
+      const cells=n.querySelector('.cells');
+      // 先放大表本地数据
+      const local=chips.filter(c=>c.srcNode===i).map(c=>c.rec);
+      cells.innerHTML='';
+      local.forEach(r=>{const c=document.createElement('span');c.className='cell k'+r.k;c.textContent=r.uid;cells.appendChild(c);});
+      // 广播来的 users（虚框）
+      USERS.forEach(u=>{const c=document.createElement('span');c.className='cell usr';c.textContent=u.uid+'✓';cells.appendChild(c);});
+      n.querySelector('.ncnt').textContent=local.length+'+'+USERS.length;
+      // 画广播线：从顶部中心 → 每个节点
+      const nc=nodeCenter(i);
+      drawWire(arena.clientWidth/2, 20, nc.x, nc.y+34, 'var(--green)', 300+i*150);
+    });
+    phase.textContent='本地 Join';
+    const res=computeResult('left'); // broadcast 等价 left join 结果
+    showResult('broadcast', res, 0, ORDERS.length);
+    running=false;
+  }, 200+chips.length*60+400);
+}
+
+// ── 计算结果表 ──
+function computeResult(op){
+  const um=Object.fromEntries(USERS.map(u=>[u.uid,u]));
+  if(op==='groupby'){
+    // 按 uid 聚合
+    const g={};
+    ORDERS.forEach(r=>{(g[r.uid]=g[r.uid]||[]).push(r);});
+    const rows=Object.entries(g).map(([uid,rs])=>({uid,cnt:rs.length,total:rs.reduce((s,r)=>s+r.amt,0)}))
+      .sort((a,b)=>b.total-a.total);
+    return {cols:['uid','cnt','total'],rows:rows.map(r=>[r.uid,r.cnt,r.total]),n:rows.length};
+  }
+  // joins
+  let rows=[];
+  if(op==='inner'){
+    ORDERS.forEach(r=>{ if(um[r.uid]) rows.push([r.oid,r.uid,um[r.uid].name,um[r.uid].tier]); });
+  } else if(op==='left'){
+    ORDERS.forEach(r=>{ const u=um[r.uid]; rows.push([r.oid,r.uid,u?u.name:'null',u?u.tier:'null']); });
+  } else if(op==='right'){
+    USERS.forEach(u=>{ const ms=ORDERS.filter(r=>r.uid===u.uid); if(ms.length) ms.forEach(r=>rows.push([r.oid,u.uid,u.name,u.tier])); else rows.push(['null',u.uid,u.name,u.tier]); });
+  } else if(op==='full'){
+    ORDERS.forEach(r=>{ const u=um[r.uid]; rows.push([r.oid,r.uid,u?u.name:'null',u?u.tier:'null']); });
+    USERS.forEach(u=>{ if(!ORDERS.some(r=>r.uid===u.uid)) rows.push(['null',u.uid,u.name,u.tier]); });
+  }
+  return {cols:['oid','uid','name','tier'],rows,n:rows.length};
+}
+
+function showResult(op, res, shuffleQty, total){
+  const isZero = op==='broadcast';
+  document.getElementById('m-shuffle').textContent = isZero ? '0 行' : shuffleQty+' 行';
+  document.getElementById('m-shuffle').className='mv '+(isZero?'shuffle-zero':'shuffle-hot');
+  document.getElementById('m-rows').textContent=res.n+' 行';
+
+  const ex=document.getElementById('explain');
+  ex.className = isZero?'zero':'';
+  const txt={
+    groupby:`<b>GroupBy</b> 把相同 uid 的行汇集到同一节点 —— 这就是 <b>Shuffle</b>，${shuffleQty} 行数据跨节点移动。Shuffle 是 Spark 最贵的操作。`,
+    inner:`<b>inner join</b> 按 uid Shuffle 后只保留两表都有的行。U03 在 users 缺失 → 被丢弃。`,
+    left:`<b>left join</b> 保留 orders 所有行，U03 无对应 user → name/tier 补 <b>null</b>。同样触发 Shuffle。`,
+    right:`<b>right join</b> 保留 users 所有行。仍需 Shuffle 按 uid 对齐。`,
+    full:`<b>full outer</b> 两边都保留，缺失方补 null。Shuffle 量最大。`,
+    broadcast:`<b>broadcast join</b>：users 小表复制到<b>每个节点</b>，orders 大表原地不动 —— <b>零 Shuffle</b>！这是大表 Join 小表的最优解。`,
+  }[op];
+  ex.innerHTML = txt + (aqe && !isZero ? `<br><span style="color:var(--green)">AQE 已开启：运行时自动合并小分区 / 处理倾斜。</span>` : '');
+
+  // 结果表
+  const rt=document.getElementById('restable');
+  rt.innerHTML='<table><tr>'+res.cols.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+    res.rows.slice(0,12).map(row=>'<tr>'+row.map(v=>{
+      let cls=''; if(v==='null')cls='k-null'; else if(typeof v==='number')cls='k-num'; else if(/^U\d/.test(v))cls='k-uid';
+      return `<td class="${cls}">${v}</td>`;
+    }).join('')+'</tr>').join('')+'</table>';
+}
+
+// ── 控制 ──
+document.getElementById('run').onclick=()=>{ resetArena(); requestAnimationFrame(()=>requestAnimationFrame(execute)); };
+document.getElementById('reset').onclick=resetArena;
+document.getElementById('aqe').onclick=function(){ aqe=!aqe; this.classList.toggle('on',aqe); };
+
+// ── 自适应缩放 ──
+function fit(){
+  const s=document.getElementById('stage');
+  const k=Math.min(window.innerWidth/1920, window.innerHeight/1080);
+  s.style.transform=`scale(${k})`;
+}
+window.addEventListener('resize',fit);
+
+// ── init ──
+document.fonts.ready.then(()=>{
+  fit(); renderSrc(); syncOps();
+  // 等布局稳定再 build
+  requestAnimationFrame(()=>{ resetArena(); });
+});
+</script>
+</body>
+</html>

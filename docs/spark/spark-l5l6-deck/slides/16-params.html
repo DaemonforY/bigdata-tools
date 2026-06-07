@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .stage{
+    background:radial-gradient(120% 110% at 30% 34%, rgba(255,107,44,0.06) 0%, rgba(255,255,255,0.012) 34%, rgba(0,0,0,0) 60%);
+  }
+
+  .table{
+    margin-top:40px;flex:1;
+    display:flex;flex-direction:column;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  /* 表头行 */
+  .thead{
+    display:grid;
+    grid-template-columns:540px 200px 1fr;
+    align-items:center;
+    gap:48px;
+    padding:0 14px 16px;
+    font-size:19px;letter-spacing:0.18em;text-transform:uppercase;
+    color:var(--dimmer);
+    border-bottom:1px solid var(--accent);
+  }
+
+  /* 数据行 */
+  .row{
+    display:grid;
+    grid-template-columns:540px 200px 1fr;
+    align-items:center;
+    gap:48px;
+    padding:23px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .row:last-child{border-bottom:none;}
+
+  /* 最常调的一行高亮 */
+  .row.star{background:rgba(255,107,44,0.05);}
+  .row.star .param{text-shadow:0 0 18px rgba(255,107,44,0.35);}
+
+  .param{
+    font-weight:700;font-size:25px;color:var(--accent);
+    letter-spacing:-0.01em;line-height:1.15;
+    display:flex;align-items:center;gap:14px;
+  }
+  .param .badge{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;
+    color:var(--black);background:var(--accent);
+    padding:3px 9px;border-radius:2px;letter-spacing:0.08em;flex:none;
+  }
+
+  .def{
+    font-weight:700;font-size:26px;color:rgba(255,255,255,0.92);
+  }
+  .def .sub{display:block;font-size:16px;font-weight:500;color:var(--dimmer);margin-top:3px;letter-spacing:0.04em;}
+
+  .desc{
+    font-family:'Inter',sans-serif;
+    font-size:23px;font-weight:400;line-height:1.42;
+    color:var(--dim);
+  }
+  .desc .k{color:rgba(255,255,255,0.9);font-weight:700;}
+  .desc .o{color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:21px;}
+  .desc .g{color:var(--green);font-weight:600;}
+</style>
+</head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L6</span>
+      <h1>调优参数速查</h1>
+      <span class="en">Tuning Cheatsheet</span>
+    </div>
+    <div class="lead">面试必考 · 生产必调 —— 最常调的是 <b>spark.sql.shuffle.partitions</b>。</div>
+
+    <div class="table">
+      <div class="thead">
+        <span>Parameter</span>
+        <span>Default</span>
+        <span>说明 / 建议</span>
+      </div>
+
+      <div class="row star">
+        <span class="param">spark.sql.shuffle.partitions<span class="badge">最常调</span></span>
+        <span class="def">200</span>
+        <span class="desc">Shuffle 后<span class="k">分区数</span>。数据量大调大(<span class="o">1000</span>)，小调小(<span class="o">50</span>)。公式：数据量(GB) <span class="o">×2~4</span></span>
+      </div>
+
+      <div class="row">
+        <span class="param">spark.executor.memory</span>
+        <span class="def">1g</span>
+        <span class="desc">每 Executor 内存。<span class="k">OOM 调大</span>，单个不超 <span class="o">64g</span>。生产 <span class="o">4g~16g</span></span>
+      </div>
+
+      <div class="row">
+        <span class="param">spark.executor.cores</span>
+        <span class="def">1</span>
+        <span class="desc">每 Executor CPU 核。推荐 <span class="o">2~5</span>。Task 并发 = <span class="k">cores × instances</span></span>
+      </div>
+
+      <div class="row">
+        <span class="param">spark.sql.adaptive.enabled</span>
+        <span class="def">true<span class="sub">3.x</span></span>
+        <span class="desc">AQE 自适应执行，运行时动态调分区 + 处理倾斜，<span class="g">强烈保持开</span></span>
+      </div>
+
+      <div class="row">
+        <span class="param">spark.memory.fraction</span>
+        <span class="def">0.6</span>
+        <span class="desc">Spark 内存池占堆比例。<span class="k">OOM 可调到</span> <span class="o">0.75</span></span>
+      </div>
+
+      <div class="row">
+        <span class="param">spark.sql.autoBroadcastJoinThreshold</span>
+        <span class="def">10MB</span>
+        <span class="desc">小于此值的表<span class="k">自动广播</span>。推荐 <span class="o">20m~100m</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L6 · 调优参数速查</span>
+    <span class="pg">16</span>
+  </footer>
+</body></html>

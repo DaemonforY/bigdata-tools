@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .wrap{padding:110px 120px;justify-content:center;}
+  .kicker{margin-bottom:auto;padding-top:40px;}
+
+  /* 巨型编号 + 标题区 */
+  .mega{
+    position:relative;display:flex;align-items:flex-start;gap:60px;
+  }
+  .no{
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    font-size:340px;line-height:0.78;letter-spacing:-0.04em;
+    color:transparent;
+    -webkit-text-stroke:2px var(--accent);
+    flex:none;margin-left:-6px;
+  }
+  .titles{padding-top:26px;}
+  .titles h1{
+    font-weight:900;font-size:118px;line-height:0.94;
+    letter-spacing:-0.03em;
+  }
+  .titles .en{
+    margin-top:24px;
+    font-family:'JetBrains Mono',monospace;font-weight:500;
+    font-size:34px;letter-spacing:0.04em;color:var(--dim);
+  }
+  .lead2{
+    margin-top:50px;max-width:1180px;
+    font-size:35px;font-weight:600;line-height:1.5;
+    letter-spacing:-0.01em;color:rgba(255,255,255,0.86);
+  }
+  .lead2 b{color:var(--accent);font-weight:800;}
+
+  /* 底部章节清单 */
+  .toc{
+    margin-top:auto;padding-top:54px;border-top:1px solid var(--line);
+    display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+  }
+  .toc .item{
+    display:flex;flex-direction:column;gap:14px;
+    padding-right:40px;
+  }
+  .toc .item + .item{border-left:1px solid var(--line);padding-left:40px;}
+  .toc .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    font-size:22px;letter-spacing:0.1em;color:var(--accent);
+  }
+  .toc .lbl{
+    font-size:27px;font-weight:600;letter-spacing:-0.01em;
+    color:rgba(255,255,255,0.9);
+  }
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="kicker"><span class="tick"></span>Section · L5</div>
+
+    <div class="mega">
+      <div class="no">05</div>
+      <div class="titles">
+        <h1>Spark SQL 实战</h1>
+        <div class="en">Spark SQL in Practice</div>
+        <p class="lead2">会 SQL，就会 Spark SQL —— 同一套 <b>Catalyst</b> 引擎，<b>DataFrame</b> 与 <b>SQL</b> 殊途同归。</p>
+      </div>
+    </div>
+
+    <div class="toc">
+      <div class="item"><span class="ix">5.1</span><span class="lbl">DataFrame 与 SQL 入口</span></div>
+      <div class="item"><span class="ix">5.2</span><span class="lbl">读写与 Schema</span></div>
+      <div class="item"><span class="ix">5.3</span><span class="lbl">转换 · 聚合 · Join</span></div>
+      <div class="item"><span class="ix">5.4</span><span class="lbl">Catalyst 执行计划</span></div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · Spark SQL 实战</span>
+    <span class="pg">03</span>
+  </footer>
+</body></html>

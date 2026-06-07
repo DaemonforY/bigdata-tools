@@ -1,0 +1,108 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  /* 本页独有样式 */
+  .stage{
+    background:radial-gradient(120% 110% at 50% 30%, rgba(255,107,44,0.06) 0%, rgba(255,255,255,0.012) 36%, rgba(0,0,0,0) 62%);
+  }
+  .wrap{justify-content:flex-start;}
+
+  .grid{
+    margin-top:78px;flex:1;
+    display:grid;grid-template-columns:1fr auto 1fr;
+    gap:0 76px;align-items:stretch;
+  }
+
+  /* 中间橙色分隔轴 */
+  .divider{
+    align-self:stretch;width:0;border-left:2px solid var(--line);
+    position:relative;display:flex;align-items:center;justify-content:center;
+  }
+  .divider .x{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:88px;
+    color:var(--accent);letter-spacing:-0.04em;
+    background:var(--black);padding:24px 0;line-height:1;
+  }
+
+  /* 每个板块 */
+  .block{display:flex;flex-direction:column;padding-top:8px;}
+  .block .tag{
+    font-family:'JetBrains Mono',monospace;font-size:24px;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:18px;
+  }
+  .block .big{
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    font-size:228px;line-height:0.82;letter-spacing:-0.05em;color:var(--white);
+  }
+  .block .name{
+    font-weight:900;font-size:62px;letter-spacing:-0.03em;line-height:1;
+    margin-top:14px;
+  }
+  .block .en{
+    font-family:'JetBrains Mono',monospace;font-weight:500;font-size:25px;
+    color:var(--dim);letter-spacing:0.02em;margin-top:16px;
+  }
+
+  /* 子条目列表 */
+  .items{
+    margin-top:44px;display:flex;flex-direction:column;gap:20px;
+    border-top:1px solid var(--line);padding-top:36px;
+  }
+  .item{display:flex;align-items:baseline;gap:20px;}
+  .item .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:22px;
+    color:var(--accent);flex:none;width:34px;
+  }
+  .item .t{font-size:31px;font-weight:600;color:rgba(255,255,255,0.9);letter-spacing:-0.01em;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="kicker"><span class="tick"></span>COURSE MAP · L5–L6</div>
+    <div class="head" style="margin-top:42px;">
+      <h1>本系列讲什么</h1>
+      <span class="en">What We Cover</span>
+    </div>
+
+    <div class="grid">
+      <!-- 05 -->
+      <div class="block">
+        <div class="tag">L5</div>
+        <div class="big">05</div>
+        <div class="name">Spark SQL 实战</div>
+        <div class="en">Spark SQL in Practice</div>
+        <div class="items">
+          <div class="item"><span class="ix">01</span><span class="t">DataFrame API vs SQL</span></div>
+          <div class="item"><span class="ix">02</span><span class="t">5 大核心算子</span></div>
+          <div class="item"><span class="ix">03</span><span class="t">电商实战迁移</span></div>
+          <div class="item"><span class="ix">04</span><span class="t">用户行为漏斗</span></div>
+        </div>
+      </div>
+
+      <!-- 分隔 -->
+      <div class="divider"><span class="x">&times;</span></div>
+
+      <!-- 06 -->
+      <div class="block">
+        <div class="tag">L6</div>
+        <div class="big">06</div>
+        <div class="name">性能调优</div>
+        <div class="en">Performance Tuning</div>
+        <div class="items">
+          <div class="item"><span class="ix">01</span><span class="t">数据倾斜原理与定位</span></div>
+          <div class="item"><span class="ix">02</span><span class="t">加盐打散</span></div>
+          <div class="item"><span class="ix">03</span><span class="t">广播 Join</span></div>
+          <div class="item"><span class="ix">04</span><span class="t">调优参数与 AQE</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>bigdata-tools · 课程地图</span>
+    <span class="pg">02</span>
+  </footer>
+</body></html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .stage{
+    background:radial-gradient(120% 110% at 26% 36%, rgba(255,107,44,0.06) 0%, rgba(255,255,255,0.012) 34%, rgba(0,0,0,0) 60%);
+  }
+  .list{
+    margin-top:42px;flex:1;
+    display:flex;flex-direction:column;justify-content:space-between;
+    border-top:1px solid var(--line);
+  }
+  .row{
+    display:flex;align-items:center;gap:44px;
+    padding:26px 8px;border-bottom:1px solid var(--line);
+    flex:1;
+  }
+  .row .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:64px;
+    color:var(--dimmer);letter-spacing:-0.02em;width:96px;flex:none;line-height:1;
+  }
+  .row .body{display:flex;flex-direction:column;gap:10px;flex:1;}
+  .row .op{
+    font-weight:900;font-size:52px;letter-spacing:-0.03em;line-height:1;
+    display:flex;align-items:baseline;gap:22px;
+  }
+  .row .op .en{
+    font-family:'JetBrains Mono',monospace;font-weight:500;font-size:24px;
+    color:var(--dim);letter-spacing:0.04em;
+  }
+  .row .desc{
+    font-size:27px;font-weight:400;color:rgba(255,255,255,0.80);letter-spacing:-0.005em;
+  }
+  .row .desc code{
+    font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;
+    color:var(--c-var);background:rgba(255,255,255,0.04);
+    padding:1px 8px;border-radius:4px;
+  }
+  .row .desc .hot{color:var(--accent);font-weight:700;}
+  .row .desc .k{color:var(--white);font-weight:700;}
+  .row.accent .ix{color:var(--accent);}
+</style>
+</head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>五大核心算子</h1>
+      <span class="en">Core Operators</span>
+    </div>
+    <div class="lead">这 <b>5 个动作</b>，覆盖 90% 的离线数据处理任务。</div>
+
+    <div class="list">
+      <div class="row">
+        <span class="ix">01</span>
+        <div class="body">
+          <div class="op">DataFrame 基础<span class="en">basics</span></div>
+          <div class="desc">读数据 · <code>printSchema</code> · <code>show</code> · <code>filter</code> 行过滤 · <code>select</code> 列选择</div>
+        </div>
+      </div>
+
+      <div class="row accent">
+        <span class="ix">02</span>
+        <div class="body">
+          <div class="op">GroupBy 聚合<span class="en">groupBy</span></div>
+          <div class="desc">相同 <span class="k">key</span> 归组做统计 —— 触发 <span class="hot">Shuffle（性能瓶颈）</span></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="ix">03</span>
+        <div class="body">
+          <div class="op">Join<span class="en">join</span></div>
+          <div class="desc"><span class="k">inner / left / right / full outer</span> 四型 —— 小表 <code>broadcast</code> 避免 Shuffle</div>
+        </div>
+      </div>
+
+      <div class="row accent">
+        <span class="ix">04</span>
+        <div class="body">
+          <div class="op">窗口函数<span class="en">window</span></div>
+          <div class="desc">分组后逐行计算，<span class="hot">保留所有行</span>（vs GroupBy 压缩成一行）</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="ix">05</span>
+        <div class="body">
+          <div class="op">Spark SQL<span class="en">spark.sql</span></div>
+          <div class="desc"><code>createOrReplaceTempView</code> 注册视图，直接写 SQL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · 5 大核心算子</span>
+    <span class="pg">05</span>
+  </footer>
+</body></html>

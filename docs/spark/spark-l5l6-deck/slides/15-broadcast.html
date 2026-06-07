@@ -1,0 +1,146 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .stage{
+    background:radial-gradient(120% 110% at 28% 36%, rgba(255,107,44,0.07) 0%, rgba(255,255,255,0.012) 34%, rgba(0,0,0,0) 60%);
+  }
+  .grid{
+    margin-top:46px;flex:1;
+    display:grid;grid-template-columns:1.06fr 0.94fr;gap:80px;align-items:stretch;
+  }
+
+  /* ── 左列：三步流程 + 广播示意 ── */
+  .left{display:flex;flex-direction:column;}
+  .flow{display:flex;flex-direction:column;gap:0;}
+  .step{display:flex;align-items:flex-start;gap:22px;}
+  .step .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px;
+    color:var(--accent);border:1px solid var(--accent);border-radius:50%;
+    width:46px;height:46px;flex:none;display:flex;align-items:center;justify-content:center;
+    letter-spacing:0;
+  }
+  .step .body{padding-top:3px;}
+  .step .st{font-size:30px;font-weight:800;letter-spacing:-0.01em;}
+  .step .sd{font-family:'JetBrains Mono',monospace;font-size:21px;color:var(--dim);margin-top:5px;}
+  .step .sd .tag{color:var(--accent);}
+  .step .sd .ok{color:var(--green);}
+  .arrow{height:30px;margin-left:22px;width:2px;background:linear-gradient(var(--accent),rgba(255,107,44,0.25));}
+
+  /* 广播示意 */
+  .bcast{
+    margin-top:42px;border-top:1px solid var(--line);padding-top:34px;
+    display:flex;align-items:center;gap:34px;
+  }
+  .src{display:flex;flex-direction:column;align-items:center;gap:10px;flex:none;}
+  .tbl{
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    border:1.5px solid var(--accent);color:var(--accent);
+    padding:16px 24px;font-size:24px;border-radius:4px;
+    background:rgba(255,107,44,0.06);text-align:center;line-height:1.25;
+  }
+  .tbl .rows{font-size:16px;font-weight:500;color:var(--dim);margin-top:2px;}
+  .src .slabel{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--dim);letter-spacing:0.12em;}
+  .fan{display:flex;flex-direction:column;justify-content:center;gap:6px;flex:none;}
+  .fan span{font-family:'JetBrains Mono',monospace;font-size:34px;color:var(--accent);line-height:0.7;}
+  .nodes{display:flex;gap:18px;flex:1;}
+  .node{
+    flex:1;border:1px solid var(--line);border-radius:6px;
+    padding:16px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;
+    background:rgba(255,255,255,0.025);
+  }
+  .node .nn{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--dim);letter-spacing:0.1em;}
+  .node .copy{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:19px;
+    color:var(--green);border:1px solid rgba(0,230,118,0.4);border-radius:3px;
+    padding:6px 14px;background:rgba(0,230,118,0.07);
+  }
+
+  /* ── 右列：代码 ── */
+  .right{display:flex;flex-direction:column;}
+  .codewrap{display:flex;flex-direction:column;flex:1;}
+  .codewrap .label{
+    font-family:'JetBrains Mono',monospace;font-size:20px;letter-spacing:0.14em;
+    color:var(--dim);margin-bottom:16px;display:flex;align-items:center;gap:12px;
+  }
+  .codewrap .label::before{content:"";width:10px;height:10px;background:var(--accent);border-radius:2px;}
+  .code{flex:1;font-size:23px;line-height:1.72;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L6</span>
+      <h1>广播 Join</h1>
+      <span class="en">Broadcast Join</span>
+    </div>
+    <div class="lead">小表广播到每个节点 —— 大表<b>零 Shuffle</b> 本地 join。</div>
+
+    <div class="grid">
+      <!-- 左：流程 + 示意 -->
+      <div class="left">
+        <div class="flow">
+          <div class="step">
+            <span class="ix">1</span>
+            <div class="body">
+              <div class="st">大表 Join 小表</div>
+              <div class="sd">默认走 Shuffle —— <span class="tag">大表全网搬运</span></div>
+            </div>
+          </div>
+          <div class="arrow"></div>
+          <div class="step">
+            <span class="ix">2</span>
+            <div class="body">
+              <div class="st">broadcast(小表)</div>
+              <div class="sd">小表完整副本发到 <span class="tag">每个节点</span></div>
+            </div>
+          </div>
+          <div class="arrow"></div>
+          <div class="step">
+            <span class="ix">3</span>
+            <div class="body">
+              <div class="st">各节点本地 Join</div>
+              <div class="sd"><span class="ok">零 Shuffle</span> · 大表数据原地不动</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bcast">
+          <div class="src">
+            <div class="tbl">users<div class="rows">5000 行</div></div>
+            <div class="slabel">SMALL</div>
+          </div>
+          <div class="fan"><span>›</span><span>›</span><span>›</span></div>
+          <div class="nodes">
+            <div class="node"><span class="nn">Node 1</span><span class="copy">users</span></div>
+            <div class="node"><span class="nn">Node 2</span><span class="copy">users</span></div>
+            <div class="node"><span class="nn">Node 3</span><span class="copy">users</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：代码 -->
+      <div class="right">
+        <div class="codewrap">
+          <div class="label">broadcast_join.py</div>
+          <div class="code"><span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> broadcast
+<span class="cm"># orders（100亿行）JOIN users（5000行）</span>
+result <span class="op">=</span> orders.<span class="fn">join</span>(<span class="fn">broadcast</span>(users), on<span class="op">=</span><span class="str">"user_id"</span>, how<span class="op">=</span><span class="str">"left"</span>)
+
+<span class="cm"># 两张大表都有倾斜 key？先分离倾斜部分分别处理</span>
+normal <span class="op">=</span> orders.<span class="fn">filter</span>(<span class="op">~</span><span class="fn">col</span>(<span class="str">"user_id"</span>).<span class="fn">isin</span>(SKEW_KEYS))
+skewed <span class="op">=</span> orders.<span class="fn">filter</span>( <span class="fn">col</span>(<span class="str">"user_id"</span>).<span class="fn">isin</span>(SKEW_KEYS))
+final  <span class="op">=</span> normal.<span class="fn">join</span>(users, <span class="str">"user_id"</span>, <span class="str">"left"</span>) \
+    .<span class="fn">union</span>(skewed.<span class="fn">join</span>(<span class="fn">broadcast</span>(users), <span class="str">"user_id"</span>, <span class="str">"left"</span>))</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L6 · 广播 Join</span>
+    <span class="pg">15</span>
+  </footer>
+</body></html>

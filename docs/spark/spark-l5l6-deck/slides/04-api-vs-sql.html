@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .stage{
+    background:radial-gradient(120% 110% at 50% 36%, rgba(255,107,44,0.06) 0%, rgba(255,255,255,0.012) 34%, rgba(0,0,0,0) 60%);
+  }
+  .cols{
+    margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:48px;
+  }
+  .col .label{
+    display:flex;align-items:center;gap:16px;margin-bottom:18px;
+  }
+  .col .label .ix{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
+    color:var(--black);background:var(--accent);height:34px;padding:0 14px;
+    display:flex;align-items:center;letter-spacing:0.04em;
+  }
+  .col .label .sub{
+    font-family:'JetBrains Mono',monospace;font-size:21px;color:var(--dim);
+    letter-spacing:0.04em;
+  }
+  .code{font-size:23px;line-height:1.6;padding:24px 30px;height:356px;}
+
+  .banner{
+    margin-top:34px;border:1px solid var(--line);
+    background:rgba(255,107,44,0.05);
+    padding:26px 36px;display:flex;align-items:center;gap:30px;
+  }
+  .banner .flow{
+    display:flex;align-items:center;gap:18px;flex:none;
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:27px;
+  }
+  .banner .flow .node{color:var(--white);}
+  .banner .flow .node.k{color:var(--accent);}
+  .banner .flow .arr{color:var(--dimmer);font-weight:500;}
+  .banner .msg{
+    font-size:27px;font-weight:600;color:rgba(255,255,255,0.84);
+    border-left:1px solid var(--line);padding-left:30px;
+  }
+  .banner .msg b{color:var(--accent);font-weight:800;}
+
+  .pick{
+    margin-top:30px;display:grid;grid-template-columns:1fr 1fr;gap:48px;
+  }
+  .pick .p{display:flex;align-items:baseline;gap:18px;}
+  .pick .p .h{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:23px;
+    color:var(--accent);letter-spacing:0.06em;flex:none;
+  }
+  .pick .p .d{font-size:25px;color:rgba(255,255,255,0.82);font-weight:400;}
+  .pick .p .d .k{color:var(--white);font-weight:700;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>DataFrame API vs Spark SQL</h1>
+      <span class="en">Two Ways, One Engine</span>
+    </div>
+    <div class="lead">同一逻辑，两种写法 —— 经 <b>Catalyst 优化</b>后性能完全相同。</div>
+
+    <div class="cols">
+      <div class="col">
+        <div class="label"><span class="ix">A</span><span class="sub">DataFrame API</span></div>
+        <div class="code">result <span class="op">=</span> df \
+    .<span class="fn">filter</span>(<span class="fn">col</span>(<span class="str">"status"</span>) != <span class="str">"cancelled"</span>) \
+    .<span class="fn">join</span>(products, on=<span class="str">"product_id"</span>, how=<span class="str">"left"</span>) \
+    .<span class="fn">groupBy</span>(<span class="str">"category"</span>) \
+    .<span class="fn">agg</span>(<span class="fn">count</span>(<span class="str">"order_id"</span>).<span class="fn">alias</span>(<span class="str">"cnt"</span>),
+         <span class="fn">sum</span>(<span class="str">"amount"</span>).<span class="fn">alias</span>(<span class="str">"gmv"</span>)) \
+    .<span class="fn">orderBy</span>(<span class="fn">col</span>(<span class="str">"gmv"</span>).<span class="fn">desc</span>())</div>
+      </div>
+      <div class="col">
+        <div class="label"><span class="ix">B</span><span class="sub">Spark SQL</span></div>
+        <div class="code">spark.<span class="fn">sql</span>(<span class="str">"""</span>
+<span class="str">    </span><span class="kw">SELECT</span> category,
+           <span class="fn">COUNT</span>(order_id) <span class="kw">AS</span> cnt,
+           <span class="fn">SUM</span>(amount)     <span class="kw">AS</span> gmv
+    <span class="kw">FROM</span> orders o
+    <span class="kw">LEFT JOIN</span> products p <span class="kw">ON</span> o.product_id = p.product_id
+    <span class="kw">WHERE</span> status != <span class="str">'cancelled'</span>
+    <span class="kw">GROUP BY</span> category
+    <span class="kw">ORDER BY</span> gmv <span class="kw">DESC</span>
+<span class="str">"""</span>)</div>
+      </div>
+    </div>
+
+    <div class="banner">
+      <div class="flow">
+        <span class="node k">Catalyst</span><span class="arr">→</span>
+        <span class="node">逻辑计划</span><span class="arr">→</span>
+        <span class="node">物理计划</span><span class="arr">→</span>
+        <span class="node">RDD</span>
+      </div>
+      <div class="msg">两种写法 <b>殊途同归</b>，优化器最终生成相同的执行计划。</div>
+    </div>
+
+    <div class="pick">
+      <div class="p"><span class="h">用 API</span><span class="d">适合<span class="k">动态构建</span>查询、<span class="k">Python 团队</span>工程化。</span></div>
+      <div class="p"><span class="h">用 SQL</span><span class="d">适合 <span class="k">Hive 迁移</span>、与 <span class="k">BI 工具</span>对接。</span></div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · DataFrame API vs Spark SQL</span>
+    <span class="pg">04</span>
+  </footer>
+</body></html>

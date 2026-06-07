@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  /* 本页独有样式 */
+  .grid{
+    margin-top:46px;flex:1;
+    display:grid;grid-template-columns:1.06fr 1fr;gap:84px;align-items:center;
+  }
+
+  /* 左栏：代码 */
+  .codecol{display:flex;flex-direction:column;}
+  .codetag{
+    font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:18px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .codetag .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block;}
+  .code{font-size:26px;line-height:1.66;}
+
+  /* 右栏：Shuffle 示意 */
+  .shuf{display:flex;flex-direction:column;}
+  .shuf .stitle{
+    font-family:'JetBrains Mono',monospace;font-size:21px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:34px;
+    display:flex;justify-content:space-between;
+  }
+  .stitle .hl{color:var(--accent);}
+
+  .diagram{position:relative;display:grid;grid-template-columns:1fr 150px 1fr;align-items:center;}
+  .col{display:flex;flex-direction:column;gap:20px;}
+  .col .ctag{
+    font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--dimmer);margin-bottom:6px;
+  }
+  .node{
+    border:1px solid var(--line);background:rgba(255,255,255,0.025);
+    padding:13px 14px;display:flex;flex-direction:column;gap:9px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .node .nh{font-size:15px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim);}
+  .cells{display:flex;gap:8px;flex-wrap:wrap;}
+  .cell{
+    width:38px;height:34px;display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:700;border-radius:2px;
+  }
+  .cell.A{background:rgba(255,107,44,0.92);color:var(--black);}
+  .cell.B{background:rgba(0,230,118,0.85);color:var(--black);}
+  .cell.C{background:rgba(255,255,255,0.86);color:var(--black);}
+
+  /* 目标节点（按 key 汇聚）*/
+  .dst .node{gap:7px;}
+  .dst .node.allA{border-color:rgba(255,107,44,0.55);box-shadow:0 0 26px rgba(255,107,44,0.14);}
+  .dst .node.allB{border-color:rgba(0,230,118,0.4);}
+  .dst .node.allC{border-color:rgba(255,255,255,0.3);}
+
+  /* 中间：redistribute 标记 */
+  .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+  .mid .arrow{font-size:46px;color:var(--accent);line-height:1;}
+  .mid .mlbl{
+    font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:0.2em;
+    text-transform:uppercase;color:var(--accent);writing-mode:initial;text-align:center;
+  }
+  .mid .sub{
+    font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:0.12em;
+    color:var(--dimmer);text-align:center;
+  }
+
+  /* key points */
+  .kpts{
+    margin-top:40px;border-top:1px solid var(--line);padding-top:30px;
+    display:flex;flex-direction:column;gap:16px;
+  }
+  .kp{
+    font-family:'JetBrains Mono',monospace;font-size:25px;color:rgba(255,255,255,0.86);
+    display:flex;align-items:baseline;gap:16px;letter-spacing:-0.005em;
+  }
+  .kp .ch{color:var(--accent);font-weight:700;flex:none;}
+  .kp b{color:var(--white);font-weight:700;}
+  .kp .hot{color:var(--accent);font-weight:700;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L5</span>
+      <h1>GroupBy 与 Shuffle</h1>
+      <span class="en">The Cost of Regrouping</span>
+    </div>
+    <div class="lead">把相同 key 的行归到一组做统计 —— 底层触发 <b>Shuffle</b>，数据在节点间重新分布。</div>
+
+    <div class="grid">
+      <!-- 左：代码 -->
+      <div class="codecol">
+        <div class="codetag"><span class="dot"></span>groupby.py</div>
+        <div class="code"><span class="var">result</span> <span class="op">=</span> df.<span class="fn">groupBy</span>(<span class="str">"user_id"</span>) \
+    .<span class="fn">agg</span>(<span class="fn">count</span>(<span class="str">"order_id"</span>).<span class="fn">alias</span>(<span class="str">"trade_count"</span>),
+         <span class="fn">sum</span>(<span class="str">"amount"</span>).<span class="fn">alias</span>(<span class="str">"total_amount"</span>),
+         <span class="fn">round</span>(<span class="fn">avg</span>(<span class="str">"price"</span>), <span class="num">2</span>).<span class="fn">alias</span>(<span class="str">"avg_price"</span>)) \
+    .<span class="fn">orderBy</span>(<span class="fn">col</span>(<span class="str">"total_amount"</span>).<span class="fn">desc</span>())</div>
+      </div>
+
+      <!-- 右：Shuffle 示意 -->
+      <div class="shuf">
+        <div class="stitle"><span>Shuffle</span><span class="hl">key → node</span></div>
+        <div class="diagram">
+          <!-- 源节点：key 混杂 -->
+          <div class="col src">
+            <div class="ctag">Before · 数据分散</div>
+            <div class="node">
+              <span class="nh">Node 1</span>
+              <div class="cells"><span class="cell A">A</span><span class="cell B">B</span><span class="cell C">C</span></div>
+            </div>
+            <div class="node">
+              <span class="nh">Node 2</span>
+              <div class="cells"><span class="cell B">B</span><span class="cell A">A</span><span class="cell A">A</span></div>
+            </div>
+            <div class="node">
+              <span class="nh">Node 3</span>
+              <div class="cells"><span class="cell C">C</span><span class="cell B">B</span><span class="cell A">A</span></div>
+            </div>
+          </div>
+
+          <!-- 中间：重新分发 -->
+          <div class="mid">
+            <span class="arrow">&rarr;</span>
+            <span class="mlbl">Shuffle</span>
+            <span class="sub">网络重分布</span>
+          </div>
+
+          <!-- 目标节点：相同 key 汇聚 -->
+          <div class="col dst">
+            <div class="ctag">After · 按 key 汇聚</div>
+            <div class="node allA">
+              <span class="nh">key A</span>
+              <div class="cells"><span class="cell A">A</span><span class="cell A">A</span><span class="cell A">A</span><span class="cell A">A</span></div>
+            </div>
+            <div class="node allB">
+              <span class="nh">key B</span>
+              <div class="cells"><span class="cell B">B</span><span class="cell B">B</span><span class="cell B">B</span></div>
+            </div>
+            <div class="node allC">
+              <span class="nh">key C</span>
+              <div class="cells"><span class="cell C">C</span><span class="cell C">C</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpts">
+      <div class="kp"><span class="ch">&rsaquo;</span><span><b>groupBy().agg()</b> 是标准聚合写法</span></div>
+      <div class="kp"><span class="ch">&rsaquo;</span><span>GroupBy 触发 <span class="hot">Shuffle</span>，是性能瓶颈所在 —— 为 L6 数据倾斜埋伏笔</span></div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L5 · GroupBy 与 Shuffle</span>
+    <span class="pg">06</span>
+  </footer>
+</body></html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .wrap{justify-content:center;padding:96px 140px 120px;}
+  .kicker{margin-bottom:0;}
+
+  /* 巨型编号作主角 */
+  .hero{
+    display:flex;align-items:flex-start;gap:64px;margin-top:18px;
+  }
+  .bignum{
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    font-size:380px;line-height:0.8;letter-spacing:-0.04em;
+    color:transparent;
+    -webkit-text-stroke:3px var(--accent);
+    flex:none;
+  }
+  .herometa{
+    display:flex;flex-direction:column;justify-content:center;
+    padding-top:38px;
+  }
+  .title{
+    font-weight:900;font-size:128px;line-height:0.92;letter-spacing:-0.04em;
+  }
+  .en{
+    margin-top:24px;
+    font-family:'JetBrains Mono',monospace;font-weight:500;
+    font-size:34px;letter-spacing:0.04em;color:var(--dim);
+  }
+  .lead{
+    margin-top:46px;font-size:34px;font-weight:600;
+    color:rgba(255,255,255,0.86);letter-spacing:-0.01em;line-height:1.45;
+    max-width:1180px;
+  }
+  .lead b{color:var(--accent);font-weight:800;}
+
+  /* 底部小节清单 */
+  .toc{
+    margin-top:78px;
+    display:flex;flex-wrap:wrap;align-items:center;gap:0;
+    font-family:'JetBrains Mono',monospace;font-weight:500;
+    font-size:25px;letter-spacing:0.06em;color:var(--dim);
+  }
+  .toc .item{color:rgba(255,255,255,0.78);}
+  .toc .sep{color:var(--accent);margin:0 22px;opacity:0.85;}
+  footer{border-top:1px solid var(--line);padding-top:30px;bottom:46px;}
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="kicker"><span class="tick"></span>Section · L6</div>
+    <div class="hero">
+      <div class="bignum">06</div>
+      <div class="herometa">
+        <h1 class="title">性能调优</h1>
+        <div class="en">Performance Tuning</div>
+        <div class="lead">当 <b>99 个 Task 都完成</b>、第 <b>100 个</b>还在跑 —— 是时候谈调优了。</div>
+      </div>
+    </div>
+    <div class="toc">
+      <span class="item">数据倾斜</span><span class="sep">/</span>
+      <span class="item">定位</span><span class="sep">/</span>
+      <span class="item">加盐</span><span class="sep">/</span>
+      <span class="item">广播 Join</span><span class="sep">/</span>
+      <span class="item">调优参数</span><span class="sep">/</span>
+      <span class="item">AQE</span>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L6 · 性能调优</span>
+    <span class="pg">11</span>
+  </footer>
+</body></html>

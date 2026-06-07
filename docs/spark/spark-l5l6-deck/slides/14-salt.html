@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  /* 流程箭头流 */
+  .flow{
+    margin-top:42px;display:flex;align-items:stretch;gap:0;
+  }
+  .step{
+    flex:1;display:flex;flex-direction:column;justify-content:center;
+    border:1px solid var(--line);background:rgba(255,255,255,0.022);
+    padding:24px 26px;position:relative;
+  }
+  .step .sn{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;
+    letter-spacing:0.16em;color:var(--dimmer);margin-bottom:12px;
+  }
+  .step.bad{border-color:rgba(255,107,44,0.5);background:rgba(255,107,44,0.06);}
+  .step.bad .sn{color:var(--accent);}
+  .step .st{font-size:27px;font-weight:800;letter-spacing:-0.01em;line-height:1.12;}
+  .step .sd{
+    margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:19px;
+    color:var(--dim);letter-spacing:0.01em;line-height:1.4;
+  }
+  .step .sd .k{color:var(--accent);font-weight:700;}
+  .step .sd .g{color:var(--green);font-weight:700;}
+  .arrow{
+    flex:none;width:62px;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:34px;
+    color:var(--accent);
+  }
+
+  /* 代码块 */
+  .codewrap{margin-top:46px;flex:1;display:flex;flex-direction:column;}
+  .codewrap .tab{
+    font-family:'JetBrains Mono',monospace;font-size:19px;letter-spacing:0.04em;
+    color:var(--dim);background:rgba(255,255,255,0.04);
+    border:1px solid var(--line);border-bottom:none;border-radius:6px 6px 0 0;
+    padding:11px 22px;align-self:flex-start;
+  }
+  .codewrap .tab::before{content:"›_ ";color:var(--accent);}
+  .code{
+    border-radius:0 6px 6px 6px;font-size:24px;line-height:1.62;
+  }
+</style></head>
+<body>
+  <div class="stage"></div>
+  <div class="wrap">
+    <div class="head">
+      <span class="num">L6</span>
+      <h1>加盐打散</h1>
+      <span class="en">Salting</span>
+    </div>
+    <div class="lead">给倾斜 key 加随机后缀<b>打散成 N 份</b> —— 局部聚合后再去盐合并。</div>
+
+    <div class="flow">
+      <div class="step bad">
+        <div class="sn">01 · 问题</div>
+        <div class="st">倾斜 key</div>
+        <div class="sd"><span class="k">user_id=BOT</span><br>独占 90% 数据</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="sn">02 · 打盐</div>
+        <div class="st">加随机盐</div>
+        <div class="sd">BOT_0 ~ BOT_9<br>裂成 10 份</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="sn">03 · 局部聚合</div>
+        <div class="st">分散到 10 Task</div>
+        <div class="sd"><span class="g">无倾斜</span> · 各算各的<br>partial_sum</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <div class="sn">04 · 去盐</div>
+        <div class="st">全局再聚合</div>
+        <div class="sd">split 去后缀<br>合并 → total</div>
+      </div>
+    </div>
+
+    <div class="codewrap">
+      <div class="tab">salt_groupby.py</div>
+      <div class="code"><span class="var">SALT_NUM</span> <span class="op">=</span> <span class="num">10</span>
+<span class="cm"># Step1 打盐</span>
+salted <span class="op">=</span> df.<span class="fn">withColumn</span>(<span class="str">"salted_key"</span>,
+    <span class="fn">concat_ws</span>(<span class="str">"_"</span>, <span class="fn">col</span>(<span class="str">"user_id"</span>), <span class="fn">floor</span>(<span class="fn">rand</span>()<span class="op">*</span><span class="var">SALT_NUM</span>).<span class="fn">cast</span>(<span class="str">"string"</span>)))
+<span class="cm"># Step2 局部聚合（key 已分散，无倾斜）</span>
+partial <span class="op">=</span> salted.<span class="fn">groupBy</span>(<span class="str">"salted_key"</span>).<span class="fn">agg</span>(<span class="fn">sum</span>(<span class="str">"amount"</span>).<span class="fn">alias</span>(<span class="str">"partial_sum"</span>))
+<span class="cm"># Step3 去盐 + Step4 全局再聚合</span>
+partial <span class="op">=</span> partial.<span class="fn">withColumn</span>(<span class="str">"user_id"</span>, <span class="fn">split</span>(<span class="fn">col</span>(<span class="str">"salted_key"</span>),<span class="str">"_"</span>)[<span class="num">0</span>])
+result  <span class="op">=</span> partial.<span class="fn">groupBy</span>(<span class="str">"user_id"</span>).<span class="fn">agg</span>(<span class="fn">sum</span>(<span class="str">"partial_sum"</span>).<span class="fn">alias</span>(<span class="str">"total_amount"</span>))</div>
+    </div>
+  </div>
+  <div class="vignette"></div>
+  <footer>
+    <span>L6 · 加盐打散</span>
+    <span class="pg">14</span>
+  </footer>
+</body></html>
